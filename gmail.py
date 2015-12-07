@@ -41,7 +41,6 @@ def _open_last_email(driver):
         if 'Greater Fort Wayne' in first_row.text:
             first_row.click()
             time.sleep(1)
-            driver.save_screenshot('/Users/cameronlengerich/Desktop/today.png')
             return
 
 
@@ -69,7 +68,7 @@ def _find_room(driver):
 
 def find_room():
     # initialize driver and set to url
-    driver = webdriver.PhantomJS()
+    driver = webdriver.PhantomJS(service_log_path=os.path.devnull)
     url = 'https://mail.google.com/mail/u/0/#inbox'
     driver.get(url)
 
