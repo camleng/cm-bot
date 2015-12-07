@@ -4,6 +4,7 @@ import time
 import re
 import os
 
+
 def _get_credentials():
     dirname = os.path.dirname(__file__)
     conn = sqlite3.connect(os.path.join(dirname, '../main'))
@@ -37,10 +38,10 @@ def _open_last_email(driver):
 
     for table in tables:
         first_row = table.find_element_by_tag_name('tr')
-
         if 'Greater Fort Wayne' in first_row.text:
             first_row.click()
             time.sleep(1)
+            driver.save_screenshot('/Users/cameronlengerich/Desktop/today.png')
             return
 
 
@@ -49,13 +50,21 @@ def _find_room(driver):
 
     for ul in ulists:
         if 'Student Leaders Meeting' in ul.text:
-                # found it!!!
-                meeting_pattern = 'Student Leaders Meeting:.+Room \d{3}'
-                match = re.findall(meeting_pattern, ul.text)[0]
-                room_pattern = 'Room \d{3}'
-                room = re.findall(room_pattern, match)[0].split()[1]
-
+            # found it!!!
+            meeting_pattern = '[Ss]tudent [Ll]eaders? [Mm]eeting:.+[Rr]oom [Gg]?\d{2}\d?'
+            matches = re.findall(meeting_pattern, ul.text)
+            if matches:
+                match = matches[0]
+            else:
+                return None
+            room_pattern = '[Rr]oom [Gg]?\d{2}\d?'
+            matches = re.findall(room_pattern, match)
+            if matches:
+                # ['Room 226'] -> '226'
+                room = matches[0].split()[1]
                 return room
+            else:
+                return None
 
 
 def find_room():
