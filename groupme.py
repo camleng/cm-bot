@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import requests
 import gmail
+import requests
 
 
 def post(payload):

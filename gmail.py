@@ -1,14 +1,17 @@
-import sqlite3
-from selenium import webdriver
+#!/usr/bin/env python3
+
 import datetime as dt
-import time
-import re
 import os
+import re
+import sqlite3
+import time
+from contextlib import suppress
+
+from selenium import webdriver
 
 
 def _get_credentials():
     conn = sqlite3.connect('main')
-
     res = conn.execute('select * from logins where site == "Google"')
     info = res.fetchone()
     email, password = info[1:]
@@ -35,25 +38,29 @@ def _open_last_email():
     tables = driver.find_elements_by_tag_name('tbody')
 
     for table in tables:
-        first_row = table.find_element_by_tag_name('tr')
-        if 'Greater Fort Wayne' in first_row.text:
-            first_row.click()
-            time.sleep(1)
-            return
+        with suppress(IndexError):
+            first_row = table.find_element_by_tag_name('tr')
+            if 'Greater Fort Wayne' in first_row.text:
+                first_row.click()
+                time.sleep(1)
+                return
 
 
 def _find_room():
     ulists = driver.find_elements_by_tag_name('ul')
 
     for ul in ulists:
-        if 'Student Leaders Meeting' in ul.text:
-            # found it!!!
+        if 'student leader' in ul.text.lower():
+            # find the list item with the Student Leader Meeting
             meeting_pattern = '[Ss]tudent [Ll]eaders? [Mm]eeting:.+[Rr]oom [Gg]?\d{2}\d?'
             matches = re.findall(meeting_pattern, ul.text)
             if matches:
+                # list of events -> 'Student Leader Meeting at
                 match = matches[0]
             else:
                 return None
+
+            # extract the room number
             room_pattern = '[Rr]oom [Gg]?\d{2}\d?'
             matches = re.findall(room_pattern, match)
             if matches:
@@ -88,7 +95,6 @@ def _verify_date(ext_date):
 
 
 def find_room():
-    # initialize driver and set to url
     url = 'https://mail.google.com/mail/u/0/#inbox'
     driver.get(url)
 
