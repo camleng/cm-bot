@@ -1,61 +1,62 @@
-#!/usr/bin/env python3
-
+import base64
 import datetime as dt
 import os
 import re
-import sqlite3
-import time
-from contextlib import suppress
 
-from selenium import webdriver
+import httplib2
+import oauth2client
+from apiclient import discovery
+from apiclient import errors
+from bs4 import BeautifulSoup
+
+
+def _list_messages_matching_query(service, user_id, query=''):
+    response = service.users().messages().list(userId=user_id, q=query).execute()
+    messages = []
+    if 'messages' in response:
+        messages.extend(response['messages'])
+
+    while 'nextPageToken' in response:
+        page_token = response['nextPageToken']
+        response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token).execute()
+        messages.extend(response['messages'])
+
+    return messages
+
+
+def _get_message(service, user_id, msg_id):
+    try:
+        message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
+        msg_str = str(base64.urlsafe_b64decode(message['raw'].encode('ASCII')))
+
+        return msg_str
+    except errors.HttpError as error:
+        print('An error occurred: %s' % error)
 
 
 def _get_credentials():
-    conn = sqlite3.connect('main')
-    res = conn.execute('select * from logins where site == "Google"')
-    info = res.fetchone()
-    email, password = info[1:]
+    credential_dir = '.credentials'
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir,
+                                   'gmail_auth.json')
 
-    return email, password
-
-
-def _login(email, password):
-    driver.find_element_by_id('Email').send_keys(email)
-    driver.find_element_by_id('next').click()
-    time.sleep(1)
-    driver.find_element_by_id('Passwd').send_keys(password)
-    driver.find_element_by_id('signIn').click()
-    time.sleep(1)
+    store = oauth2client.file.Storage(credential_path)
+    credentials = store.get()
+    return credentials
 
 
-def _query():
-    driver.find_element_by_id('gbqfq').send_keys('subject:spiritual cyber-vitamin')
-    driver.find_element_by_id('gbqfb').click()
-    time.sleep(1)
-
-
-def _open_last_email():
-    tables = driver.find_elements_by_tag_name('tbody')
-
-    for table in tables:
-        with suppress(IndexError):
-            first_row = table.find_element_by_tag_name('tr')
-            if 'Greater Fort Wayne' in first_row.text:
-                first_row.click()
-                time.sleep(1)
-                return
-
-
-def _find_room():
-    ulists = driver.find_elements_by_tag_name('ul')
+def _find_room(soup):
+    ulists = soup.select('ul')
 
     for ul in ulists:
-        if 'student leader' in ul.text.lower():
+        text = ul.text.replace('=', '').replace('\\r', '').replace('\\n', '').lower()
+        if 'student leader' in text:
             # find the list item with the Student Leader Meeting
             meeting_pattern = '[Ss]tudent [Ll]eaders? [Mm]eeting:.+[Rr]oom [Gg]?\d{2}\d?'
-            matches = re.findall(meeting_pattern, ul.text)
+            matches = re.findall(meeting_pattern, text)
             if matches:
-                # list of events -> 'Student Leader Meeting at
+                # list of events -> 'Student Leader Meeting at'
                 match = matches[0]
             else:
                 return None
@@ -71,8 +72,8 @@ def _find_room():
                 return None
 
 
-def _find_date():
-    spans = driver.find_elements_by_tag_name('span')
+def _find_date(soup):
+    spans = soup.select('span')
 
     for span in spans:
         date_pattern = '.+day, .+ \d\d?, \d{4}'
@@ -95,25 +96,28 @@ def _verify_date(ext_date):
 
 
 def find_room():
-    url = 'https://mail.google.com/mail/u/0/#inbox'
-    driver.get(url)
+    credentials = _get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('gmail', 'v1', http=http)
 
-    email, password = _get_credentials()
+    user_id = 'me'
+    query = 'subject:spiritual cyber-vitamin'
 
-    _login(email, password)
+    messages = _list_messages_matching_query(service, user_id, query)
+    last_message_id = messages[0]['id']
 
-    _query()
+    message = _get_message(service, user_id, last_message_id)
 
-    _open_last_email()
+    soup = BeautifulSoup(message, 'html.parser')
 
-    room = _find_room()
+    room = _find_room(soup)
 
-    date = _find_date()
+    date = _find_date(soup)
 
     if _verify_date(date):
         return room
+    
+    return room
 
-
-driver = webdriver.PhantomJS(service_log_path=os.path.devnull)
 if __name__ == '__main__':
     find_room()
