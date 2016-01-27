@@ -35,11 +35,9 @@ def _get_message(service, user_id, msg_id):
 
 
 def _get_credentials():
-    credential_dir = '.credentials'
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'gmail_auth.json')
+    credential_path = os.path.join(credential_dir, 'gmail_auth.json')
 
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
@@ -95,7 +93,23 @@ def _verify_date(ext_date):
     return False
 
 
+def _message_sent_today():
+    with open(status_file) as infile:
+        if 'sent' in infile:
+            return True
+    return False
+
+
+def _mark_as_sent():
+    with open(status_file, 'w') as outfile:
+        outfile.write('sent')
+
+
 def find_room():
+    if _message_sent_today():
+        print('Message already sent')
+        return None
+
     credentials = _get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
@@ -115,9 +129,13 @@ def find_room():
     date = _find_date(soup)
 
     if _verify_date(date):
+        _mark_as_sent()
         return room
-    
-    return room
+    else:
+        print('No meeting today')
+        return None
 
-if __name__ == '__main__':
-    find_room()
+
+current_dir = os.path.dirname(__file__)
+credential_dir = os.path.join(current_dir, '.credentials')
+status_file = os.path.join(current_dir, '.status')
