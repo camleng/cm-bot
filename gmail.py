@@ -2,6 +2,8 @@ import base64
 import datetime as dt
 import os
 import re
+import json
+import pickle
 
 import httplib2
 import oauth2client
@@ -24,6 +26,22 @@ def _list_messages_matching_query(service, user_id, query=''):
     return messages
 
 
+def _find_date(service, user_id, msg_id):
+    date = []
+    try:
+        response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
+        headers = response['payload']['headers'] 
+        for header in headers:
+            if header['name'] == 'Date':
+                day, month = header['value'].split()[1:3]
+                if len(day) == 1:
+                    day = '0' + day
+                date = [month, day]
+        return date
+    except errors.HttpError as error:
+        print('An error occurred: {}'.format(error))
+
+
 def _get_message(service, user_id, msg_id):
     try:
         message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
@@ -31,7 +49,7 @@ def _get_message(service, user_id, msg_id):
 
         return msg_str
     except errors.HttpError as error:
-        print('An error occurred: %s' % error)
+        print('An error occurred: {}'.format(error))
 
 
 def _get_credentials():
@@ -70,23 +88,9 @@ def _find_room(soup):
                 return None
 
 
-def _find_date(soup):
-    spans = soup.select('span')
-
-    for span in spans:
-        date_pattern = '.+day, .+ \d\d?, \d{4}'
-        matches = re.findall(date_pattern, span.text)
-        if matches:
-            # ['Monday, December 7, 2015'], ... -> ['December', '7']
-            date = matches[0].split(', ')[1].split()
-            if len(date[1]) == 1:
-                date[1] = '0' + str(date[1])
-            return date
-
-
 def _verify_date(ext_date):
     today_day = dt.datetime.today().strftime('%d')
-    today_month = dt.datetime.today().strftime('%B')
+    today_month = dt.datetime.today().strftime('%b')
     today = [today_month, today_day]
     if today == ext_date:
         return True
@@ -119,14 +123,11 @@ def find_room():
 
     messages = _list_messages_matching_query(service, user_id, query)
     last_message_id = messages[0]['id']
-
     message = _get_message(service, user_id, last_message_id)
-
     soup = BeautifulSoup(message, 'html.parser')
-
     room = _find_room(soup)
-
-    date = _find_date(soup)
+    
+    date = _find_date(service, user_id, last_message_id) 
 
     if _verify_date(date):
         _mark_as_sent()
