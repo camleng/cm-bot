@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.4
 
 import gmail
 import requests
@@ -10,11 +10,12 @@ def post(base_url, payload):
 
 def main():
     base_url = 'https://api.groupme.com/v3'
-    # bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test group
-    bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
-    room = gmail.find_room()
+    bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
+    # bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
+    building, room = gmail.find_room()
     if room:
-        message = 'Today\'s meeting will be held in Walb %s' % room
+        # message = 'Today\'s meeting will be held in Walb 114'.format(building, room)
+        message = 'Today\'s meeting will be held in {} {}'.format(building, room)
         payload = {'bot_id': bot_id, 'text': message}
         post(base_url, payload)
 
