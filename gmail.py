@@ -79,11 +79,11 @@ def _get_credentials():
 def _find_room(soup):
     '''Finds the building and room number of the meeting
     '''
-    print(soup.prettify())
+
     # remove unnecessary formatting
     text = soup.text.replace('=', '').replace('\\r', '').replace('\\n', '').lower()
+    
     # find the building and room number of the meeting
-
     pattern = 'student\s*leaders?\s*meeting:\s*monday,\s*\w+\s*\d\d?\w+,\s*(?:\w+|\d+)-1(?::00)?\s*p\.?m\.?,\s*(liberal\s*arts|l\.a\.|walb)\s*\w*,\s*room\s*(g?-?\d{2}\d?)'
     match = re.search(pattern, text)
     # check for success
