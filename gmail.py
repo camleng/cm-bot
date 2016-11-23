@@ -1,20 +1,22 @@
+"""Helper functions for parsing the email from ministry@ipfw.edu
+that contains the meeting location
+"""
+
 import base64
 from datetime import datetime as dt
 import os
 import re
-import json
-import pickle
-
 import httplib2
-import oauth2client
-from apiclient import discovery
-from apiclient import errors
+
+from apiclient import discovery, errors
+from oauth2client import client, tools
+from oauth2client.file import Storage
 from bs4 import BeautifulSoup
 
 
 def _list_messages_matching_query(service, user_id, query=''):
-    '''Uses the Gmail API to list messages matching the given query
-    '''
+    """Uses the Gmail API to list messages matching the given query
+    """
     response = service.users().messages().list(userId=user_id, q=query).execute()
     messages = []
     if 'messages' in response:
@@ -30,8 +32,9 @@ def _list_messages_matching_query(service, user_id, query=''):
 
 
 def _find_date(service, user_id, msg_id):
-    '''This method uses the Gmail API to extract the header from the message and parse it for the date the email was sent.
-    '''
+    """Uses the Gmail API to extract the header from the message
+    and parse it for the date the email was sent.
+    """
 
     # date is formatted [month, day]
     date = []
@@ -39,6 +42,7 @@ def _find_date(service, user_id, msg_id):
     # extract date from email headers
     try:
         response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
+
         headers = response['payload']['headers']
         for header in headers:
             if header['name'] == 'Date':
@@ -49,11 +53,12 @@ def _find_date(service, user_id, msg_id):
                 date = [month, day]
         return date
     except errors.HttpError as error:
-        print('An error occurred: {}'.format(error))
+        print(f'An error occurred: {error}')
 
 
 def _get_message(service, user_id, msg_id):
-    """This method uses the Gmail API to extract the encoded text from the message and decodes it to make it readable and searchable
+    """Uses the Gmail API to extract the encoded text from the message
+    and decodes it to make it readable and searchable
     """
     try:
         message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
@@ -61,49 +66,88 @@ def _get_message(service, user_id, msg_id):
 
         return msg_str
     except errors.HttpError as error:
-        print('An error occurred: {}'.format(error))
+        print(f'An error occurred: {error}')
 
 
 def _get_credentials():
-    '''Gets stored oauth2 credentials
-    '''
+    """Gets stored oauth2 credentials
+    """
+
+    scopes = 'https://www.googleapis.com/auth.gmail.readonly'
+    client_secret_file = 'client_secret.json'
+    application_name = 'GroupMe Bot'
+
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir, 'gmail_auth.json')
+    credential_path = os.path.join(credential_dir, 'groupme-bot.json')
 
-    store = oauth2client.file.Storage(credential_path)
+    store = Storage(credential_path)
     credentials = store.get()
+    if not credentials or credentials.invalid:
+        flow = client.flow_from_clientsecrets(os.path.join(credential_dir, client_secret_file), scopes)
+        flow.user_agent = application_name 
+        credentials = tools.run_flow(flow, store)
+        print(f'Storing credentials to {credential_path}')
     return credentials
 
 
 def _find_room(soup):
-    '''Finds the building and room number of the meeting
-    '''
-
+    """Finds the building and room number of the meeting
+    """
     # remove unnecessary formatting
     text = soup.text.replace('=', '').replace('\\r', '').replace('\\n', '').lower()
-    
+
     # find the building and room number of the meeting
-    pattern = 'student\s*leaders?\s*meeting:\s*monday,\s*\w+\s*\d\d?\w+,\s*(?:\w+|\d+)-1(?::00)?\s*p\.?m\.?,\s*(liberal\s*arts|l\.a\.|walb)\s*\w*,\s*room\s*(g?-?\d{2}\d?)'
+    pattern = re.compile(r"""
+    student
+    \s*
+    leader
+    s? # optional plural
+    \s*
+    meeting:
+    \s*
+    monday, # day of the week
+    \s*
+    \w+ # month
+    \s*
+    \d\d? # day, optionally 1 digit
+    \w+, # day ending ('st', 'th')
+    \s*
+    (?:\w+|\d+) # starting time (noon or 12)
+    -
+    1(?::00)? # ending time (1 or 1:00)
+    \s*
+    p\.?m\.?, # 'pm' or 'p.m.'
+    \s*
+    (liberal\s*arts|l\.a\.|walb) # building
+    \s*
+    \w*, # extra info such as 'union' after 'walb'
+    \s*
+    room
+    \s*
+    (
+    [g-]* # optional ground floor and hyphen ('G08', 'G-21')
+    \d{2}\d? # room number, max of 3 digits
+    )
+    """, re.X)
     match = re.search(pattern, text)
+
     # check for success
     if match:
         building, room = match.groups()
         # format results
         if building in ['liberal arts', 'l.a.']:
-            bulding = 'LA'
+            building = 'LA'
         else:
             building = building.capitalize()
+
         return building, room.capitalize()
     else:
         return None, None
 
 def _verify_date(ext_date):
-    '''Makes sure that the date of the email matches today's date
-    '''
-    # today_day = dt.datetime.today().strftime('%d')
-    # today_month = dt.datetime.today().strftime('%b')
-    # today = [today_month, today_day]
+    """Makes sure that the date of the email matches today's date
+    """
     today = dt.today().strftime('%b %d').split()
     if today == ext_date:
         return True
@@ -126,6 +170,8 @@ def _mark_as_sent():
 
 
 def find_room():
+    """Finds the room number and building of the meeting location
+    """
     if _message_sent_today():
         print('Message already sent')
         return None, None
@@ -155,14 +201,12 @@ def find_room():
     date = _find_date(service, user_id, last_message_id)
 
     # we don't want to post a message if there is no meeting today
-    if _verify_date(date):
+    if _verify_date(date) and building and room:
         _mark_as_sent()
         return building, room
     else:
         print('No meeting today')
         return None, None
-
-    return building, room
 
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')
