@@ -7,6 +7,7 @@ from datetime import datetime as dt
 import os
 import re
 import httplib2
+import json
 
 from apiclient import discovery, errors
 from oauth2client import client, tools
@@ -169,12 +170,34 @@ def _mark_as_sent():
         outfile.write('sent')
 
 
+def _save_location(location):
+    """Saves the location of the meeting to 'location.json'
+    """
+    with open('location.json', 'w') as file:
+        file.write(location)
+
+
+def last_location(formatted=False):
+    """Returns the last meeting location
+    """
+    filename = os.path.join(os.path.dirname(__file__), 'location.json')
+    try:
+        with open(filename) as file:
+            location = json.loads(file.read())
+            if formatted:
+                return f"The {' '.join(location['date'])} meeting was held in {location['building']} {location['room']}"
+            else:
+                return location
+    except FileNotFoundException:
+        print('No location found')
+
+
 def find_room():
     """Finds the room number and building of the meeting location
     """
     if _message_sent_today():
         print('Message already sent')
-        return None, None
+        return None
 
     # authorize with oauth2
     credentials = _get_credentials()
@@ -203,10 +226,12 @@ def find_room():
     # we don't want to post a message if there is no meeting today
     if _verify_date(date) and building and room:
         _mark_as_sent()
-        return building, room
+        _save_location(location)
+        return {'building': building, 'room': room, 'date': date}
     else:
         print('No meeting today')
-        return None, None
+        print(last_location(formatted=True))
+        return None
 
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')

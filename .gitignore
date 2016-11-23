@@ -5,3 +5,4 @@ __pycache__
 *.pyc
 .AppleDouble
 env
+location.json
