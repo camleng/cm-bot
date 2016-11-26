@@ -17,8 +17,8 @@ def post(base_url, payload):
 
 if __name__ == '__main__':
     base_url = 'https://api.groupme.com/v3'
-    bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
-    # bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
+    # bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
+    bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
     location  = gmail.find_location()
 
     if location:

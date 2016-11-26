@@ -166,7 +166,7 @@ def _save_location(location):
     """Saves the location of the last meeting
     """
     with open('location.json', 'w') as f:
-        f.write(location)
+        f.write(json.dumps(location))
 
 
 def last_location(formatted=False):
