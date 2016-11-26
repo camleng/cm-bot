@@ -15,7 +15,7 @@ from oauth2client.file import Storage
 from bs4 import BeautifulSoup
 
 
-def _list_messages_matching_query(service, user_id, query=''):
+def _get_last_message_id(service, user_id, query=''):
     """Uses the Gmail API to list messages matching the given query
     """
     response = service.users().messages().list(userId=user_id, q=query).execute()
@@ -29,43 +29,40 @@ def _list_messages_matching_query(service, user_id, query=''):
         response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token).execute()
         messages.extend(response['messages'])
 
-    return messages
+    return messages[0]['id']
 
 
 def _find_date(service, user_id, msg_id):
     """Uses the Gmail API to extract the header from the message
     and parse it for the date the email was sent.
     """
-
-    # date is formatted [month, day]
-    date = []
-
     # extract date from email headers
     try:
         response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
 
-        headers = response['payload']['headers']
-        for header in headers:
+        for header in response['payload']['headers']:
             if header['name'] == 'Date':
                 day, month = header['value'].split()[1:3]
-                # pad day with 0's if necessary
+
+                # pad day with a '0' if necessary
                 if len(day) == 1:
                     day = '0' + day
-                date = [month, day]
-        return date
+
+                return dict(month=month, day=day)
+        return None
     except errors.HttpError as error:
         print(f'An error occurred: {error}')
 
 
-def _get_message(service, user_id, msg_id):
+def _get_raw_message(service, user_id, msg_id):
     """Uses the Gmail API to extract the encoded text from the message
     and decodes it to make it readable and searchable
     """
     try:
-        message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
-        msg_str = str(base64.urlsafe_b64decode(message['raw'].encode('ASCII')))
+        enc_message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
+        msg = str(base64.urlsafe_b64decode(enc_message['raw'].encode('ASCII')))
 
-        return msg_str
+        return msg
     except errors.HttpError as error:
         print(f'An error occurred: {error}')
 
@@ -73,7 +70,6 @@ def _get_message(service, user_id, msg_id):
 def _get_credentials():
     """Gets stored oauth2 credentials
     """
-
     scopes = 'https://www.googleapis.com/auth.gmail.readonly'
     client_secret_file = 'client_secret.json'
     application_name = 'GroupMe Bot'
@@ -146,35 +142,31 @@ def _find_room(soup):
     else:
         return None, None
 
-def _verify_date(ext_date):
+def _verify_date(date):
     """Makes sure that the date of the email matches today's date
     """
-    today = dt.today().strftime('%b %d').split()
-    if today == ext_date:
-        return True
-    return False
-
+    month, day = dt.today().strftime('%b %d').split()
+    today = dict(month=month, day=day)
+    return today == date
 
 def _message_sent_today():
     try:
-        with open(status_file) as infile:
-            if 'sent' in infile:
-                return True
-        return False
-    except Exception:
+        with open(status_file) as f:
+            return 'sent' in f
+    except FileNotFoundError:
         open(status_file, 'w').close()
         return False
 
 def _mark_as_sent():
-    with open(status_file, 'w') as outfile:
-        outfile.write('sent')
+    with open(status_file, 'w') as f:
+        f.write('sent')
 
 
 def _save_location(location):
-    """Saves the location of the meeting to 'location.json'
+    """Saves the location of the last meeting
     """
-    with open('location.json', 'w') as file:
-        file.write(location)
+    with open('location.json', 'w') as f:
+        f.write(location)
 
 
 def last_location(formatted=False):
@@ -182,18 +174,18 @@ def last_location(formatted=False):
     """
     filename = os.path.join(os.path.dirname(__file__), 'location.json')
     try:
-        with open(filename) as file:
-            location = json.loads(file.read())
+        with open(filename) as f:
+            location = json.loads(f.read())
             if formatted:
-                return f"The {' '.join(location['date'])} meeting was held in {location['building']} {location['room']}"
+                return "The {date[month]} {date[day]} meeting was held in {building} {room}".format_map(location)
             else:
                 return location
-    except FileNotFoundException:
+    except FileNotFoundError:
         print('No location found')
 
 
-def find_room():
-    """Finds the room number and building of the meeting location
+def find_location():
+    """Finds the location of the meeting
     """
     if _message_sent_today():
         print('Message already sent')
@@ -204,34 +196,34 @@ def find_room():
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
 
+    # 'me' is shorthand for the current user
     user_id = 'me'
+
+    # gmail query to find the relevant emails
     query = 'subject:spiritual cyber-vitamin'
 
-    # get recent messages matching the query
-    messages = _list_messages_matching_query(service, user_id, query)
+    # get the message id from the last email 
+    last_message_id = _get_last_message_id(service, user_id, query)
 
-    # get the latest message id from the list
-    last_message_id = messages[0]['id']
-
-    # get the message headers
-    message = _get_message(service, user_id, last_message_id)
+    # gets the raw, unformatted message
+    message = _get_raw_message(service, user_id, last_message_id)
 
     # create BeautifulSoup object to help parse the returned html
     soup = BeautifulSoup(message, 'html.parser')
 
+    # find the building and the room from the email
     building, room = _find_room(soup)
 
+    # find the date in the email headers
     date = _find_date(service, user_id, last_message_id)
 
-    # we don't want to post a message if there is no meeting today
+    # only post a message in the GroupMe conversation if there is a meeting today 
     if _verify_date(date) and building and room:
         _mark_as_sent()
         _save_location(location)
-        return {'building': building, 'room': room, 'date': date}
+        return dict(building=building, room=room, date=date)
     else:
-        print('No meeting today')
-        print(last_location(formatted=True))
-        return None
+       return None
 
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')
