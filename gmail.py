@@ -95,7 +95,7 @@ def _find_room(soup):
     text = soup.text.replace('=', '').replace('\\r', '').replace('\\n', '').lower()
 
     # find the building and room number of the meeting
-    pattern = re.compile(r"""
+    pattern = re.compile("""
     student
     \s*
     leader
@@ -109,16 +109,21 @@ def _find_room(soup):
     \s*
     \d\d? # day, optionally 1 digit
     \w+, # day ending ('st', 'th')
+    ,? # optional comma
     \s*
     (?:\w+|\d+) # starting time (noon or 12)
+    \s*
     -
+    \s*
     1(?::00)? # ending time (1 or 1:00)
     \s*
     p\.?m\.?, # 'pm' or 'p.m.'
     \s*
     (liberal\s*arts|l\.a\.|walb) # building
     \s*
-    \w*, # extra info such as 'union' after 'walb'
+    \w* # extra info such as 'union' after 'walb'
+    \s*
+    \w*,
     \s*
     room
     \s*
@@ -177,7 +182,9 @@ def last_location(formatted=False):
         with open(filename) as f:
             location = json.loads(f.read())
             if formatted:
-                return "The {date[month]} {date[day]} meeting was held in {building} {room}".format_map(location)
+                if not location['building'] and not location['room']:
+                    return 'There was no meeting on {date[month]} {date[day]}'.format_map(location)
+                return 'The {date[month]} {date[day]} meeting was held in {building} {room}'.format_map(location)
             else:
                 return location
     except FileNotFoundError:
@@ -220,10 +227,11 @@ def find_location():
     # only post a message in the GroupMe conversation if there is a meeting today 
     if _verify_date(date) and building and room:
         _mark_as_sent()
+        location = dict(building=building, room=room, date=date)
         _save_location(location)
-        return dict(building=building, room=room, date=date)
+        return location
     else:
-       return None
+        return None
 
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')
