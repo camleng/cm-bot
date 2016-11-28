@@ -28,8 +28,8 @@ if __name__ == '__main__':
     parse_args()
 
     base_url = 'https://api.groupme.com/v3'
-    bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
-    # bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
+    bot_id = ''    # Test Bot for Bot Test
+    # bot_id = ''  # CM Bot for Student Leaders
     location  = gmail.find_location()
 
     if location:

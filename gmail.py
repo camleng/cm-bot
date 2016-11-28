@@ -70,7 +70,7 @@ def _get_raw_message(service, user_id, msg_id):
 def _get_credentials():
     """Gets stored oauth2 credentials
     """
-    scopes = 'https://www.googleapis.com/auth.gmail.readonly'
+    scopes = 'https://www.googleapis.com/auth/gmail.readonly'
     client_secret_file = 'client_secret.json'
     application_name = 'GroupMe Bot'
 
