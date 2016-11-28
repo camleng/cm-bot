@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-import gmail
-import requests
 import sys
+import argparse
 
-if '--last' in sys.argv:
-    location = gmail.last_location(formatted=True)
-    print(location)
-    sys.exit() 
+import requests
+import gmail
+
 
 def post(base_url, payload):
     """POST the payload to send the message
@@ -15,10 +13,23 @@ def post(base_url, payload):
     requests.post(f'{base_url}/bots/post', data=payload)
 
 
+def parse_args():
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--last', action='store_true', help='View the location of the last meeting')
+    args = parser.parse_args()
+
+    if args.last:
+        print(gmail.last_location(formatted=True))
+        sys.exit() 
+
+
 if __name__ == '__main__':
+    parse_args()
+
     base_url = 'https://api.groupme.com/v3'
-    # bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
-    bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
+    bot_id = 'fd5961d86f878c3539401edae2'    # Test Bot for Bot Test
+    # bot_id = 'eac5909e675c05af67a1e2c755'  # CM Bot for Student Leaders
     location  = gmail.find_location()
 
     if location:
