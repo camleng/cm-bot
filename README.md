@@ -35,13 +35,20 @@ It's good practice in Python to run code in virtual environments so you can easi
 $ virtualenv env --python=python3.6
 ```
 
-Activate your virtualenv.
+Activate your `virtualenv`.
 
 ```sh
 $ . env/bin/activate
 ```
 
 Note the `(env)` above the shell prompt.
+
+You can later deactivate your `virtualenv` by typing the following.
+
+```sh
+(env)
+$ deactivate
+```
 
 <br>
 
