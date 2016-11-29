@@ -14,7 +14,8 @@ def post(base_url, payload):
 
 
 def parse_args():
-    # parse arguments
+    """Parse the command line arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--last', action='store_true', help='View the location of the last meeting')
     args = parser.parse_args()
@@ -29,7 +30,7 @@ if __name__ == '__main__':
 
     base_url = 'https://api.groupme.com/v3'
     bot_id = ''  # CM Bot for Student Leaders
-    location  = gmail.find_location()
+    location = gmail.find_location()
 
     if location:
         message = "Today's meeting will be held in {building} {room}".format_map(location)
