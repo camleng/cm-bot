@@ -157,7 +157,7 @@ Edit your `crontab` for your user.
 $ crontab -e
 ```
 
-Add these lines at the end. Substitute $GROUPME with the path to your `groupme-bot` folder. Sadly, `crontab` does not allow for custom variables. You can, however, use \$HOME to save some typing.
+Add these lines at the end. Substitute $GROUPME with the path to your `groupme-bot` folder. Sadly, `crontab` does not allow for custom variables. You can, however, use $HOME to save some typing.
 
 ```sh
 # m     h       dom     mon     dow     command
