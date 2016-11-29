@@ -29,13 +29,19 @@ $ git clone https://github.com/camleng/groupme-bot.git
 
 **Virtualenv**
 
-It's good practice in Python to run code in virtual environments so you can easily manage your dependencies on a per-project basis. Read more on virtualenv [here](http://docs.python-guide.org/en/latest/dev/virtualenvs/). It's assumed that you'll be using `virtualenv` in this project. Make sure to specify Python 3.6 when initalizing.
+It's good practice in Python to run code in virtual environments so you can easily manage your dependencies on a per-project basis. Read more on virtualenv [here](http://docs.python-guide.org/en/latest/dev/virtualenvs/). It's assumed that you'll be using `virtualenv` in this project. Make sure to specify Python 3.6 when initalizing.  I have named my environment `env`.
 
 ```sh
 $ virtualenv env --python=python3.6
 ```
 
- I have named my environment `env` — note the `(env)` above the shell prompt now.
+Activate your virtualenv.
+
+```sh
+$ . env/bin/activate
+```
+
+Note the `(env)` above the shell prompt.
 
 <br>
 
