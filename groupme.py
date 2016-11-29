@@ -3,14 +3,17 @@
 import sys
 import argparse
 
-import requests
+import urllib3
+import certifi
 import gmail
 
 
-def post(base_url, payload):
+def post(payload):
     """POST the payload to send the message
+    This method uses SSL certification verification through certifi
     """
-    requests.post(f'{base_url}/bots/post', data=payload)
+    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+    http.request('POST', '{https://api.groupme.com/v3/bots/post', fields=payload)
 
 
 def parse_args():
@@ -28,7 +31,7 @@ def parse_args():
 if __name__ == '__main__':
     parse_args()
 
-    base_url = 'https://api.groupme.com/v3'
+    base_url = ''
     bot_id = ''  # CM Bot for Student Leaders
     location = gmail.find_location()
 

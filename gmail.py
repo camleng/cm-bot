@@ -225,7 +225,8 @@ def find_location():
     date = _find_date(service, user_id, last_message_id)
 
     # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date) and building and room:
+    # if _verify_date(date) and building and room:
+    if building and room:
         _mark_as_sent()
         location = dict(building=building, room=room, date=date)
         _save_location(location)
