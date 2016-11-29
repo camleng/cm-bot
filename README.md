@@ -1,7 +1,7 @@
 # GroupMe-Bot
-Locates the meeting for IPFW Campus Ministry student leader team meeting Monday mornings
+Locates the meeting for IPFW Campus Ministry student leader meeting Monday mornings.
 
----
+<br>
 
 ## Getting started
 
@@ -13,16 +13,15 @@ This code requires Python 3.6. Get the dev version [here](https://docs.python.or
 
 **Headless devices**
 
-If you are using a Raspberry Pi or other headless device, make sure to do these steps first on a computer that has a UI, or use X with your Pi. Since the authentication requires a browser, it's impossible to authenticate with a headless device.
+If you are using a Raspberry Pi or another headless device, make sure to do these steps first on a computer that has a UI, or use X with your Pi. Since the authentication requires a browser, it's impossible to authenticate with a headless device.
 
 <br>
 
 **Get the code**
 
-Clone this repository on Github.
+Clone this repository on GitHub.
 
 ```sh
-(env)
 $ git clone https://github.com/camleng/groupme-bot.git
 ```
 
@@ -30,7 +29,13 @@ $ git clone https://github.com/camleng/groupme-bot.git
 
 **Virtualenv**
 
-It's good practice in Python to run code in virtual environments so you can easily manage your dependencies on a per-project basis. Read more on virtualenv [here](http://docs.python-guide.org/en/latest/dev/virtualenvs/). It's assumed that you'll be using `virtualenv` in this project. I have named my environment `env` — note the `(env)` above shell prompts.
+It's good practice in Python to run code in virtual environments so you can easily manage your dependencies on a per-project basis. Read more on virtualenv [here](http://docs.python-guide.org/en/latest/dev/virtualenvs/). It's assumed that you'll be using `virtualenv` in this project. Make sure to specify Python 3.6 when initalizing.
+
+```sh
+$ virtualenv env --python=python3.6
+```
+
+ I have named my environment `env` — note the `(env)` above the shell prompt now.
 
 <br>
 
@@ -49,7 +54,7 @@ $ pip install -r requirements.txt
 
 - Register a new bot at https://dev.groupme.com/bots.
 - Make note of your Bot ID.
-- In `groupme.py`, change the `bot_id` to match your newly-created bot.
+- In `groupme.py`, find the following line and change the `bot_id` to match the id of your newly-created bot.
 
 ```python
 # groupme.py
@@ -68,7 +73,7 @@ bot_id = '[your_bot_id]'
 
 - Under "Where will you be calling the API from?" select your device.
 
-  *Raspberry Pi reminder: If using a Raspberry Pi or other headless device, select "Other UI". Since the authentication requires a UI, it's impossible to authenticate with a headless device.*
+  *Raspberry Pi reminder: If you are using a Raspberry Pi or other headless device, select "Other UI". Since the authentication requires a browser, it's impossible to authenticate with a headless device.*
 
 - Under "What data will you be accessing?" select "User data".
 
@@ -84,7 +89,7 @@ bot_id = '[your_bot_id]'
 
 - Click "Download" to download the credentials.
 
-- Rename this file to `client_secret.json` move it to a folder named `.credentials`.
+- Rename the downloaded file to `client_secret.json` and move it to a folder named `.credentials`.
 
   *Note the `.` at the beginning of the folder name.*
 
@@ -105,15 +110,15 @@ This will open your browser to authenticate your application.
 
 Click "Allow".
 
-This creates a file underneath your `.credentials` folder called `groupme-bot.json`.
+This creates a file inside your `.credentials` folder called `groupme-bot.json`.
 
-The application will now run, and you will not need to authenticate on any subsequent runs of the application.
+The application will now finish running, and you will not need to authenticate on any subsequent runs of the application.
 
 <br>
 
 **Back to the Pi**
 
-If you wish to run your application on the Pi, make sure to clone the project again from Github.
+If you wish to run your application on the Pi, make sure to clone the project again from GitHub.
 
 ```sh
 $ git clone https://github.com/camleng/groupme-bot.git
@@ -143,7 +148,7 @@ $ python groupme.py
 
 **Automation**
 
-It's assumed that this script will run every Monday morning for the Student Leader Meeting. If you have a Unix system the defacto method is to use `crontab`.
+It's assumed that this script will run every Monday morning for the Student Leader meeting. If you have a Unix system, the de facto method is to use `crontab`.
 
 Edit your `crontab` for your user.
 
@@ -169,3 +174,5 @@ These values assume the script will run at 8:30 am every Monday morning. If you 
 - Day of the week (0-7 [7 or 0 == Sunday])
 - `/path/to/command` – Script or command name to schedule
 
+
+The second entry is to clear the `.status` file. That file denotes if the message has already been sent that day. That file will be cleared every night at midnight.
