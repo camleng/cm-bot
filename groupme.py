@@ -31,7 +31,7 @@ def parse_args():
 if __name__ == '__main__':
     parse_args()
 
-    bot_id = '4c2c8f3d6a387d16f818c8fe88'  # CM Bot for Student Leaders
+    bot_id = ''  # CM Bot for Student Leaders
     location = gmail.find_location()
 
     if location:
