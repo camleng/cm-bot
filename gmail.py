@@ -6,9 +6,10 @@ import base64
 from datetime import datetime as dt
 import os
 import re
-import httplib2
+import sys
 import json
 
+import httplib2
 from apiclient import discovery, errors
 from oauth2client import client, tools
 from oauth2client.file import Storage
@@ -99,37 +100,37 @@ def _find_room(soup):
     student
     \s*
     leader
-    s? # optional plural
+    s?                             # optional plural
     \s*
     meeting:
     \s*
-    monday, # day of the week
+    monday,                        # day of the week
     \s*
     \w+ # month
     \s*
-    \d\d? # day, optionally 1 digit
-    \w+, # day ending ('st', 'th')
-    ,? # optional comma
+    \d\d?                          # day, optionally 1 digit
+    \w+,                           # day ending ('st', 'th')
+    ,?                             # optional comma
     \s*
-    (?:\w+|\d+) # starting time (noon or 12)
+    (?:\w+|\d+)                    # starting time (noon or 12)
     \s*
     -
     \s*
-    1(?::00)? # ending time (1 or 1:00)
+    1(?::00)?                      # ending time (1 or 1:00)
     \s*
-    p\.?m\.?, # 'pm' or 'p.m.'
+    p\.?m\.?,                      # 'pm' or 'p.m.'
     \s*
-    (liberal\s*arts|l\.a\.|walb) # building
+    (liberal\s*arts|l\.a\.|walb)   # building
     \s*
-    \w* # extra info such as 'union' after 'walb'
+    \w*                            # extra info such as 'union' after 'walb'
     \s*
     \w*,
     \s*
     room
     \s*
     (
-    [g-]* # optional ground floor and hyphen ('G08', 'G-21')
-    \d{2}\d? # room number, max of 3 digits
+    [g-]*                          # optional ground floor and hyphen ('G08', 'G-21')
+    \d{2}\d?                       # room number, max of 3 digits
     )
     """, re.X)
     match = re.search(pattern, text)
@@ -196,7 +197,8 @@ def find_location():
     """
     if _message_sent_today():
         print('Message already sent')
-        return None
+        print(last_location(formatted=True)) 
+        sys.exit()
 
     # authorize with oauth2
     credentials = _get_credentials()
@@ -225,8 +227,7 @@ def find_location():
     date = _find_date(service, user_id, last_message_id)
 
     # only post a message in the GroupMe conversation if there is a meeting today 
-    # if _verify_date(date) and building and room:
-    if building and room:
+    if _verify_date(date) and building and room:
         _mark_as_sent()
         location = dict(building=building, room=room, date=date)
         _save_location(location)

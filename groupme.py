@@ -13,7 +13,7 @@ def post(payload):
     This method uses SSL certification verification through certifi
     """
     http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
-    http.request('POST', '{https://api.groupme.com/v3/bots/post', fields=payload)
+    http.request('POST', 'https://api.groupme.com/v3/bots/post', fields=payload)
 
 
 def parse_args():
@@ -31,14 +31,13 @@ def parse_args():
 if __name__ == '__main__':
     parse_args()
 
-    base_url = ''
-    bot_id = ''  # CM Bot for Student Leaders
+    bot_id = '4c2c8f3d6a387d16f818c8fe88'  # CM Bot for Student Leaders
     location = gmail.find_location()
 
     if location:
         message = "Today's meeting will be held in {building} {room}".format_map(location)
         payload = dict(bot_id=bot_id, text=message)
-        post(base_url, payload)
+        post(payload)
     else:
         print('No meeting today')
         print(gmail.last_location(formatted=True))
