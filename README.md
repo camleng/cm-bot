@@ -29,13 +29,13 @@ If I only show a Unix prompt, that means the command will work in both Unix and 
 
 Clone this repository on GitHub.
 
-```sh
+```bash
 $ git clone https://github.com/camleng/groupme-bot.git
 ```
 
 Enter the created directory.
 
-```sh
+```bash
 $ cd groupme-bot
 ```
 
@@ -47,19 +47,19 @@ It's good practice in Python to run code in virtual environments so you can easi
 
 Install `virtualenv` with `pip` (or perhaps `pip3`).
 
-```sh
+```bash
 $ pip install virtualenv
 ```
 
 It's assumed that you'll be using `virtualenv` in this project. Make sure to specify Python 3.6 when initalizing. I have named my environment `env`.
 
-```sh
+```bash
 $ virtualenv env
 ```
 
 If for some reason `virtualenv` does not select the correct version of Python, you may need to specify Python 3.6.
 
-```sh
+```bash
 $ virtualenv env --python=python3.6
 ```
 
@@ -67,7 +67,7 @@ Activate your `virtualenv`.
 
 - Unix
 
-  ```sh
+  ```bash
   $ . env/bin/activate
   ```
 
@@ -82,7 +82,7 @@ Note the `(env)` above the shell prompt (or beside on Windows).
 
 You can later deactivate your `virtualenv` by typing the following.
 
-```sh
+```bash
 (env)
 $ deactivate
 ```
@@ -93,7 +93,7 @@ $ deactivate
 
 Install the packages via `pip` with the included `requirements.txt` file.
 
-```sh
+```bash
 (env)
 $ pip install -r requirements.txt
 ```
@@ -103,13 +103,21 @@ $ pip install -r requirements.txt
 #### Registering a new GroupMe bot
 
 - Head to https://dev.groupme.com/bots.
+
 - Sign in with your GroupMe account
+
 - Click "Create Bot".
+
 - Select the group your bot will post to.
+
 - Give the bot a name like "CM Bot" or something similar.
+
 - It's not necessary to give a Callback or Avatar URL.
+
 - Click "Submit".
+
 - Copy the Bot ID of your newly-created bot.
+
 - Open up `groupme.py` in your favorite text editor. Find the following line and change the `bot_id` to match the id of your newly-created bot.
 
 ```python
@@ -122,7 +130,6 @@ bot_id = '[your_bot_id]'
 #### Create a new project from the Google API Console
 
 - Use [this wizard](https://console.developers.google.com/flows/enableapi?apiid=gmail) from the Google API Console to create a new project. Name the project "GroupMe Bot" or something similar.
-
 - Once the API is enabled, click "Go to credentials".
 
 - Under "Which API are you using?" select "Gmail API".
@@ -139,7 +146,7 @@ bot_id = '[your_bot_id]'
 
 - Click "Create client ID".
 
-- Enter "GroupMe-Bot" as the product name to show to users
+- Enter "GroupMe-Bot" as the product name to show to users.
 
 - Click "Continue".
 
@@ -149,7 +156,7 @@ bot_id = '[your_bot_id]'
 
   *Note the `.` at the beginning of the folder name.*
 
-  ```sh
+  ```bash
   (env)
   $ mkdir .credentials
   ```
@@ -160,7 +167,7 @@ bot_id = '[your_bot_id]'
 
   - Unix
 
-    ```sh
+    ```bash
     (env)
     $ mv ~/Downloads/Unknown .credentials/client_secret.json
     ```
@@ -180,7 +187,7 @@ bot_id = '[your_bot_id]'
 
 #### Run `groupme.py`
 
-```sh
+```bash
 (env)
 $ python groupme.py
 ```
@@ -207,14 +214,14 @@ If you have a Unix system, the de facto method is to use `crontab`.
 
 Edit your `crontab` for your user.
 
-```sh
+```bash
 (env)
 $ crontab -e
 ```
 
 Add these lines at the end. Substitute $GROUPME with the path to your `groupme-bot` folder. Sadly, `crontab` does not allow for custom variables. You can, however, use $HOME to save some typing.
 
-```sh
+```bash
 # m     h       dom     mon     dow     command
 30      8       *       *       1       $GROUPME/env/bin/python $GROUPME/groupme.py
 0       0       *       *       *       echo > $GROUPME/.status
@@ -241,7 +248,7 @@ If you wish to run your application on the Pi, you'll have to repeat some of ste
 
 While on your Pi, clone the project again from GitHub.
 
-```sh
+```bash
 $ git clone https://github.com/camleng/groupme-bot.git
 ```
 
@@ -259,12 +266,12 @@ Copy the `.credentials` directory over to the Pi underneath the `groupme-bot` fo
 
 If you're using Unix, you can use the `scp` command.
 
-```sh
+```bash
 (env)
 $ scp -r .credentials pi@10.0.0.25:/path/to/groupme-bot
 ```
 
-If you're using Windows you can use a program like [WinSCP](https://winscp.net/eng/download.php).
+If you're using Windows, you can use a program like [WinSCP](https://winscp.net/eng/download.php).
 
 <br>
 
@@ -283,10 +290,9 @@ bot_id = '[your_bot_id]'
 
 Run `groupme.py` and you'll be all set! The credentials will be detected and it will not ask for authorization this time around.
 
-```sh
+```bash
 (env)
 $ python groupme.py
 ```
 
 <br>
-
