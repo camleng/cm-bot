@@ -2,8 +2,9 @@
 that contains the meeting location
 """
 
+import pickle
 import base64
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 import os
 import re
 import sys
@@ -33,15 +34,13 @@ def _get_last_message_id(service, user_id, query=''):
     return messages[0]['id']
 
 
-def _find_date(service, user_id, msg_id):
+def _find_date(headers):
     """Uses the Gmail API to extract the header from the message
     and parse it for the date the email was sent.
     """
     # extract date from email headers
     try:
-        response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
-
-        for header in response['payload']['headers']:
+        for header in headers: 
             if header['name'] == 'Date':
                 day, month = header['value'].split()[1:3]
 
@@ -55,15 +54,19 @@ def _find_date(service, user_id, msg_id):
         print(f'An error occurred: {error}')
 
 
-def _get_raw_message(service, user_id, msg_id):
+def _get_message_info(service, user_id, msg_id):
     """Uses the Gmail API to extract the encoded text from the message
     and decodes it to make it readable and searchable
     """
     try:
         enc_message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
-        msg = str(base64.urlsafe_b64decode(enc_message['raw'].encode('ASCII')))
+        message = str(base64.urlsafe_b64decode(enc_message['raw']), 'utf-8')
+        message = message.replace('=\r\n', '').replace('=22', '"').replace('=46', 'F').lower()
+        message = BeautifulSoup(message, 'html.parser').text
+        response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
+        headers = response['payload']['headers']
 
-        return msg
+        return message, headers
     except errors.HttpError as error:
         print(f'An error occurred: {error}')
 
@@ -89,13 +92,9 @@ def _get_credentials():
     return credentials
 
 
-def _find_room(soup):
+def _find_sl_room(message):
     """Finds the building and room number of the meeting
     """
-    # remove unnecessary formatting
-    text = soup.text.replace('=', '').replace('\\r', '').replace('\\n', '').lower()
-
-    # find the building and room number of the meeting
     pattern = re.compile("""
     student
     \s*
@@ -106,7 +105,7 @@ def _find_room(soup):
     \s*
     monday,                        # day of the week
     \s*
-    \w+ # month
+    \w+                            # month
     \s*
     \d\d?                          # day, optionally 1 digit
     \w+,                           # day ending ('st', 'th')
@@ -133,10 +132,10 @@ def _find_room(soup):
     \d{2}\d?                       # room number, max of 3 digits
     )
     """, re.X)
-    match = re.search(pattern, text)
+    match = re.search(pattern, message)
 
     # check for success
-    if match:
+    if match and len(match.groups()) == 2:
         building, room = match.groups()
         # format results
         if building in ['liberal arts', 'l.a.']:
@@ -148,40 +147,69 @@ def _find_room(soup):
     else:
         return None, None
 
-def _verify_date(date):
+def _verify_date(date, meeting_type='student_leader'):
     """Makes sure that the date of the email matches today's date
     """
     month, day = dt.today().strftime('%b %d').split()
     today = dict(month=month, day=day)
-    return today == date
 
-def _message_sent_today():
+    if meeting_type == 'student_leader':
+        return today == date
+
+    elif meeting_type == 'conversations':
+         month, day = (dt.today() + timedelta(days=2)).strftime('%b %d').split()
+         wed = dict(month=month, day=day)
+         return today == wed
+
+
+def clear_status():
+    with open(status_file, 'w') as f:
+        f.write(json.dumps(dict(student_leader='', conversations=''), indent=4))
+        
+def _message_sent_today(meeting_type='student_leader'):
     try:
+        status = {}
         with open(status_file) as f:
-            return 'sent' in f
+            status = json.loads(f.read())
+            return status[meeting_type] == 'sent'
     except FileNotFoundError:
-        open(status_file, 'w').close()
+        with open(status_file, 'w') as f:
+            status = dict(student_leader='', conversations='')
+            f.write(json.dumps(status, indent=4))
         return False
 
-def _mark_as_sent():
+
+def _mark_as_sent(meeting_type):
+    status = {}
+    with open(status_file) as f:
+       status = json.loads(f.read()) 
     with open(status_file, 'w') as f:
-        f.write('sent')
+        status[meeting_type] = 'sent'
+        f.write(json.dumps(status, indent=4))
+        
 
-
-def _save_location(location):
+def _save_location(location, meeting_type='student_leader'):
     """Saves the location of the last meeting
     """
+    last = last_location(meeting_type='both')
+    last[meeting_type] = location
+
     with open('location.json', 'w') as f:
-        f.write(json.dumps(location))
+        f.write(json.dumps(last, indent=4))
+
+    return json.dumps(last, indent=4)
 
 
-def last_location(formatted=False):
+def last_location(meeting_type='student_leader', formatted=False):
     """Returns the last meeting location
     """
     filename = os.path.join(os.path.dirname(__file__), 'location.json')
     try:
         with open(filename) as f:
             location = json.loads(f.read())
+            if meeting_type != 'both':
+                location = location[meeting_type]
+            
             if formatted:
                 if not location['building'] and not location['room']:
                     return 'There was no meeting on {date[month]} {date[day]}'.format_map(location)
@@ -192,12 +220,101 @@ def last_location(formatted=False):
         print('No location found')
 
 
-def find_location():
-    """Finds the location of the meeting
+def _find_conversations_meeting(message, headers):
+    """Finds the location of the conversations meeting
     """
-    if _message_sent_today():
+    building, room = _find_cv_room(message)
+
+    date = _find_date(headers)
+    # only post a message in the GroupMe conversation if there is a meeting today 
+    if _verify_date(date, meeting_type='conversations') and building and room:
+        # if building and room:
+        _mark_as_sent(meeting_type='conversations')
+        location = dict(building=building, room=room, date=date)
+        _save_location(location)
+        return location
+    else:
+        return None
+
+
+    return dict(building=building, room=room)
+
+def _find_cv_room(message):
+    """Finds the building and room number of the meeting
+    """
+    # remove unnecessary formatting
+    message = message.replace('=\r\n', '').replace('\r\n>', '')\
+            .replace('=22', '"').replace('=46', 'F').lower()
+
+    # find the building and room number of the meeting
+    pattern = re.compile("""
+    cm
+    \s*
+    "conversations"
+    \s*
+    meeting:
+    \s*
+    wednesday         # day of the week
+    ,?
+    \s*
+    \w+               # month
+    \s*
+    \d\d?             # day, optionally 1 digit
+    \w+?              # optional day ending ('st', 'nd', 'th')
+    ,?
+    \s*
+    7(?::00)?         # starting time (7 or 7:30)
+    -
+    8:30              # ending time
+    \s*
+    p.?m.?,?          # 'pm' or 'p.m.'
+    \s*
+    (?:ipfw's\s*)?    # "IPFW's" Walb Class Ballroom
+    (walb)            # building (always Walb)
+    ,?
+    .*
+    (222|ballroom)""", re.X)
+    match = pattern.search(message)
+
+    # check for success
+    if match and len(match.groups()) == 2:
+        building, room = match.groups()
+        # format results
+        if room == 'ballroom':
+            room = 'Classic Ballroom'
+        elif room == '222':
+            room = '222-226'
+        return building.capitalize(), room
+
+    else:
+        return None, None
+
+     
+
+def _find_student_leader_meeting(message, headers):
+    """Finds the location of the student leader meeting
+    """
+    # find the building and the room from the email
+    building, room = _find_sl_room(message)
+
+    # find the date in the email headers
+    date = _find_date(headers)
+
+    # only post a message in the GroupMe conversation if there is a meeting today 
+    if _verify_date(date) and building and room:
+        # if building and room:
+        _mark_as_sent(meeting_type='student_leader')
+        location = dict(building=building, room=room, date=date)
+        _save_location(location)
+        return location
+    else:
+        return None
+
+
+def find_location(meeting_type='student_leader'):
+    if _message_sent_today(meeting_type):
         print('Message already sent')
-        print(last_location(formatted=True)) 
+        print(last_location(meeting_type, formatted=True)) 
         sys.exit()
 
     # authorize with oauth2
@@ -214,26 +331,15 @@ def find_location():
     # get the message id from the last email 
     last_message_id = _get_last_message_id(service, user_id, query)
 
-    # gets the raw, unformatted message
-    message = _get_raw_message(service, user_id, last_message_id)
+    # get the formatted message and headers 
+    message, headers = _get_message_info(service, user_id, last_message_id)
 
-    # create BeautifulSoup object to help parse the returned html
-    soup = BeautifulSoup(message, 'html.parser')
+    if meeting_type == 'student_leader':
+        return _find_student_leader_meeting(message, headers)    
 
-    # find the building and the room from the email
-    building, room = _find_room(soup)
+    elif meeting_type == 'conversations':
+        return _find_conversations_meeting(message, headers)
 
-    # find the date in the email headers
-    date = _find_date(service, user_id, last_message_id)
-
-    # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date) and building and room:
-        _mark_as_sent()
-        location = dict(building=building, room=room, date=date)
-        _save_location(location)
-        return location
-    else:
-        return None
 
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')
