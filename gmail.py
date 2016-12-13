@@ -2,19 +2,18 @@
 that contains the meeting location
 """
 
-import pickle
 import base64
 from datetime import datetime as dt, timedelta
 import os
 import re
 import sys
-import json
 
 import httplib2
 from apiclient import discovery, errors
 from oauth2client import client, tools
 from oauth2client.file import Storage
 from bs4 import BeautifulSoup
+from tinydb import TinyDB, Query
 
 
 def _get_last_message_id(service, user_id, query=''):
@@ -39,19 +38,18 @@ def _find_date(headers):
     and parse it for the date the email was sent.
     """
     # extract date from email headers
-    try:
-        for header in headers: 
-            if header['name'] == 'Date':
-                day, month = header['value'].split()[1:3]
+    for header in headers: 
+        if header['name'] == 'Date':
+            day, month, year = header['value'].split()[1:4]
 
-                # pad day with a '0' if necessary
-                if len(day) == 1:
-                    day = '0' + day
+            # pad day with a '0' if necessary
+            if len(day) == 1:
+                day = '0' + day
 
-                return dict(month=month, day=day)
-        return None
-    except errors.HttpError as error:
-        print(f'An error occurred: {error}')
+            date = {'year': year, 'month': month, 'day': day}
+
+            return date
+    return None
 
 
 def _get_message_info(service, user_id, msg_id):
@@ -108,7 +106,7 @@ def _find_sl_room(message):
     \w+                            # month
     \s*
     \d\d?                          # day, optionally 1 digit
-    \w+,                           # day ending ('st', 'th')
+    \w+                            # day ending ('st', 'th')
     ,?                             # optional comma
     \s*
     (?:\w+|\d+)                    # starting time (noon or 12)
@@ -147,77 +145,58 @@ def _find_sl_room(message):
     else:
         return None, None
 
-def _verify_date(date, meeting_type='student_leader'):
+def _verify_date(date, meeting_type):
     """Makes sure that the date of the email matches today's date
     """
-    month, day = dt.today().strftime('%b %d').split()
-    today = dict(month=month, day=day)
+    today = dt.today()
 
     if meeting_type == 'student_leader':
-        return today == date
+        month, day = today.strftime('%b %d').split()
+        today_date = {'month': month, 'day': day}
+        return today_date == date
 
     elif meeting_type == 'conversations':
-         month, day = (dt.today() + timedelta(days=2)).strftime('%b %d').split()
-         wed = dict(month=month, day=day)
-         return today == wed
+        wed = date + timedelta(days=2)
+        return today.date() == wed.date()
+        
+
+def pizza_night(date):
+    weekday, day = [int(x) for x in dt.today().strftime('%w %d').split()]
+    return weekday == 3 and day - 7 <= 0
 
 
 def clear_status():
-    with open(status_file, 'w') as f:
-        f.write(json.dumps(dict(student_leader='', conversations=''), indent=4))
-        
-def _message_sent_today(meeting_type='student_leader'):
-    try:
-        status = {}
-        with open(status_file) as f:
-            status = json.loads(f.read())
-            return status[meeting_type] == 'sent'
-    except FileNotFoundError:
-        with open(status_file, 'w') as f:
-            status = dict(student_leader='', conversations='')
-            f.write(json.dumps(status, indent=4))
-        return False
+    db.update({'status': ''}, (q.type == 'student_leader') | (q.type == 'conversations'))
+
+
+def _message_sent_today(meeting_type):
+    return db.contains((q.type == meeting_type) & (q.status == 'sent'))
 
 
 def _mark_as_sent(meeting_type):
-    status = {}
-    with open(status_file) as f:
-       status = json.loads(f.read()) 
-    with open(status_file, 'w') as f:
-        status[meeting_type] = 'sent'
-        f.write(json.dumps(status, indent=4))
-        
+    db.update({'status': 'sent'}, q.type == meeting_type)
 
-def _save_location(location, meeting_type='student_leader'):
+
+def _save_location(location, meeting_type):
     """Saves the location of the last meeting
     """
-    last = last_location(meeting_type='both')
-    last[meeting_type] = location
-
-    with open('location.json', 'w') as f:
-        f.write(json.dumps(last, indent=4))
-
-    return json.dumps(last, indent=4)
+    # separate the datetime object in location to be a year, month, and day
+    location['date'] = dict(zip(['year', 'month', 'day'], location['date'].strftime('%Y %b %d').split()))
+    db.update(location, q.type == meeting_type)
 
 
-def last_location(meeting_type='student_leader', formatted=False):
+def last_location(meeting_type, formatted=False):
     """Returns the last meeting location
     """
-    filename = os.path.join(os.path.dirname(__file__), 'location.json')
-    try:
-        with open(filename) as f:
-            location = json.loads(f.read())
-            if meeting_type != 'both':
-                location = location[meeting_type]
-            
-            if formatted:
-                if not location['building'] and not location['room']:
-                    return 'There was no meeting on {date[month]} {date[day]}'.format_map(location)
-                return 'The {date[month]} {date[day]} meeting was held in {building} {room}'.format_map(location)
-            else:
-                return location
-    except FileNotFoundError:
-        print('No location found')
+    location = db.get(q.type == meeting_type)
+     
+    if location:
+        if formatted:
+            if not location['building'] and not location['room']:
+                return 'There was no meeting on {date[month]} {date[day]}'.format_map(location)
+            return 'The {date[month]} {date[day]} meeting was held in {building} {room}'.format_map(location)
+        else:
+            return location
 
 
 def _find_conversations_meeting(message, headers):
@@ -227,17 +206,17 @@ def _find_conversations_meeting(message, headers):
 
     date = _find_date(headers)
     # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date, meeting_type='conversations') and building and room:
-        # if building and room:
-        _mark_as_sent(meeting_type='conversations')
-        location = dict(building=building, room=room, date=date)
-        _save_location(location)
+    if _verify_date(date, 'conversations') and building and room:
+        _mark_as_sent('conversations')
+        location = {'building': building, 'room': room, 'date': date, 'status': ''}
+        _save_location(location, 'student_leader')
         return location
     else:
         return None
 
 
-    return dict(building=building, room=room)
+    return {'building': building, 'room': room}
+
 
 def _find_cv_room(message):
     """Finds the building and room number of the meeting
@@ -289,7 +268,6 @@ def _find_cv_room(message):
     else:
         return None, None
 
-     
 
 def _find_student_leader_meeting(message, headers):
     """Finds the location of the student leader meeting
@@ -301,21 +279,36 @@ def _find_student_leader_meeting(message, headers):
     date = _find_date(headers)
 
     # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date) and building and room:
-        # if building and room:
-        _mark_as_sent(meeting_type='student_leader')
-        location = dict(building=building, room=room, date=date)
-        _save_location(location)
+    if _verify_date(date, 'student_leader') and building and room:
+        _mark_as_sent()
+        location = {'building': building, 'room': room, 'date': date, 'status': ''}
+        _save_location(location, 'student_leader')
         return location
     else:
         return None
 
 
-def find_location(meeting_type='student_leader'):
+def find_location(meeting_type):
+    exit_early = False
     if _message_sent_today(meeting_type):
         print('Message already sent')
-        print(last_location(meeting_type, formatted=True)) 
+        exit_early = True
+
+    day = dt.today().strftime('%A')
+    if meeting_type == 'student_leader' and day != 'Monday':
+        print('No Student Leader meeting today')
+        exit_early = True
+
+    if meeting_type == 'conversations' and day != 'Wednesday':
+        print('No Conversations meeting today')
+        exit_early = True
+     
+    if exit_early:
+        location = last_location(meeting_type, formatted=True)
+        if location:
+            print(location)
         sys.exit()
+    
 
     # authorize with oauth2
     credentials = _get_credentials()
@@ -344,3 +337,5 @@ def find_location(meeting_type='student_leader'):
 current_dir = os.path.dirname(__file__)
 credential_dir = os.path.join(current_dir, '.credentials')
 status_file = os.path.join(current_dir, '.status')
+db = TinyDB('db.json')
+q = Query()

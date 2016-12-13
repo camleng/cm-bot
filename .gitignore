@@ -5,7 +5,9 @@ __pycache__
 *.pyc
 .AppleDouble
 env
-location.json
+db.json
 changes
 .cache
 test*
+*.swp
+chat.log
