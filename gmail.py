@@ -38,7 +38,7 @@ def _find_date(headers):
     and parse it for the date the email was sent.
     """
     # extract date from email headers
-    for header in headers: 
+    for header in headers:
         if header['name'] == 'Date':
             day, month, year = header['value'].split()[1:4]
 
@@ -46,7 +46,7 @@ def _find_date(headers):
             if len(day) == 1:
                 day = '0' + day
 
-            date = {'year': year, 'month': month, 'day': day}
+            date = dt.strptime(f'{month} {day}, {year}', '%b %d, %Y')
 
             return date
     return None
@@ -84,7 +84,7 @@ def _get_credentials():
     credentials = store.get()
     if not credentials or credentials.invalid:
         flow = client.flow_from_clientsecrets(os.path.join(credential_dir, client_secret_file), scopes)
-        flow.user_agent = application_name 
+        flow.user_agent = application_name
         credentials = tools.run_flow(flow, store)
         print(f'Storing credentials to {credential_path}')
     return credentials
@@ -145,20 +145,6 @@ def _find_sl_room(message):
     else:
         return None, None
 
-def _verify_date(date, meeting_type):
-    """Makes sure that the date of the email matches today's date
-    """
-    today = dt.today()
-
-    if meeting_type == 'student_leader':
-        month, day = today.strftime('%b %d').split()
-        today_date = {'month': month, 'day': day}
-        return today_date == date
-
-    elif meeting_type == 'conversations':
-        wed = date + timedelta(days=2)
-        return today.date() == wed.date()
-        
 
 def pizza_night(date):
     weekday, day = [int(x) for x in dt.today().strftime('%w %d').split()]
@@ -173,28 +159,29 @@ def _message_sent_today(meeting_type):
     return db.contains((q.type == meeting_type) & (q.status == 'sent'))
 
 
-def _mark_as_sent(meeting_type):
-    db.update({'status': 'sent'}, q.type == meeting_type)
-
-
 def _save_location(location, meeting_type):
     """Saves the location of the last meeting
     """
+    location['date'] = dict(zip(['month', 'day', 'year'], location['date'].strftime('%b %d %Y').split()))
     # separate the datetime object in location to be a year, month, and day
-    location['date'] = dict(zip(['year', 'month', 'day'], location['date'].strftime('%Y %b %d').split()))
     db.update(location, q.type == meeting_type)
+
+
+def mark_as_sent(meeting_type):
+    db.update({'status': 'sent'}, q.type == meeting_type)
 
 
 def last_location(meeting_type, formatted=False):
     """Returns the last meeting location
     """
     location = db.get(q.type == meeting_type)
-     
+    location['date'] = dt.strptime('{month} {day}, {year}'.format_map(location['date']), '%b %d, %Y')
+
     if location:
         if formatted:
             if not location['building'] and not location['room']:
-                return 'There was no meeting on {date[month]} {date[day]}'.format_map(location)
-            return 'The {date[month]} {date[day]} meeting was held in {building} {room}'.format_map(location)
+                return 'There was no meeting on {date.month} {date.day}'.format_map(location)
+            return 'The {date.month}/{date.day} meeting was held in {building} {room}'.format_map(location)
         else:
             return location
 
@@ -205,11 +192,13 @@ def _find_conversations_meeting(message, headers):
     building, room = _find_cv_room(message)
 
     date = _find_date(headers)
-    # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date, 'conversations') and building and room:
-        _mark_as_sent('conversations')
+    while date.weekday() != 2:
+        date += timedelta(days=1)
+
+    # only post a message in the GroupMe conversation if there is a meeting today
+    if dt.today().date() == date.date() and building and room:
         location = {'building': building, 'room': room, 'date': date, 'status': ''}
-        _save_location(location, 'student_leader')
+        _save_location(location, 'conversations')
         return location
     else:
         return None
@@ -277,10 +266,11 @@ def _find_student_leader_meeting(message, headers):
 
     # find the date in the email headers
     date = _find_date(headers)
+    while date.weekday() != 0:
+        date += timedelta(days=1)
 
-    # only post a message in the GroupMe conversation if there is a meeting today 
-    if _verify_date(date, 'student_leader') and building and room:
-        _mark_as_sent()
+    # only post a message in the GroupMe conversation if there is a meeting today
+    if dt.today().date() == date.date() and building and room:
         location = {'building': building, 'room': room, 'date': date, 'status': ''}
         _save_location(location, 'student_leader')
         return location
@@ -299,16 +289,16 @@ def find_location(meeting_type):
         print('No Student Leader meeting today')
         exit_early = True
 
-    if meeting_type == 'conversations' and day != 'Wednesday':
-        print('No Conversations meeting today')
-        exit_early = True
-     
+    # if meeting_type == 'conversations' and day != 'Wednesday':
+        # print('No Conversations meeting today')
+    #     exit_early = True
+
     if exit_early:
         location = last_location(meeting_type, formatted=True)
         if location:
             print(location)
-        sys.exit()
-    
+        exit()
+
 
     # authorize with oauth2
     credentials = _get_credentials()
@@ -321,14 +311,14 @@ def find_location(meeting_type):
     # gmail query to find the relevant emails
     query = 'subject:spiritual cyber-vitamin'
 
-    # get the message id from the last email 
+    # get the message id from the last email
     last_message_id = _get_last_message_id(service, user_id, query)
 
-    # get the formatted message and headers 
+    # get the formatted message and headers
     message, headers = _get_message_info(service, user_id, last_message_id)
 
     if meeting_type == 'student_leader':
-        return _find_student_leader_meeting(message, headers)    
+        return _find_student_leader_meeting(message, headers)
 
     elif meeting_type == 'conversations':
         return _find_conversations_meeting(message, headers)

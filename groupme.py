@@ -22,7 +22,7 @@ def parse_args():
     """Parse the command line arguments
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--last', action='store_true', help='View the location of the last meeting')
+    parser.add_argument('-l', '--last', action='store_true', help='View the location of the last meeting. Used in conjunction with -s or -c')
     parser.add_argument('-s', '--student-leader', action='store_true', help='Get the location of the Student Leader meeting. Use with -l to show the last location.')
     parser.add_argument('-c', '--conversations', action='store_true', help='Get the location of the Conversations meeting. Use with -l to show the last location.')
     parser.add_argument('-n', '--dry-run', action='store_true', help='Do not send message to GroupMe--just show what would be sent')
@@ -30,7 +30,7 @@ def parse_args():
     args = parser.parse_args()
 
     return args
-    
+
 if __name__ == '__main__':
     # parse the command line arguments
     args = parse_args()
@@ -39,9 +39,9 @@ if __name__ == '__main__':
     meeting_type = 'conversations' if args.conversations else 'student_leader'
 
     if args.last:
-        # get last location 
+        # get last location
         print(gmail.last_location(meeting_type, formatted=True))
-        sys.exit() 
+        sys.exit()
 
     if args.clear:
         # clear the status file
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                 message = "Today's Conversations meeting will be held downstairs in the Walb Classic Ballroom."
             elif location['room'] == '222-226':
                 message = "Today's Conversations meeting will be held upstairs in rooms 222-226."
-            
+
             # check if it's a pizza night
             if gmail.pizza_night(location['date']):
                 message += " Pizza tonight!"
@@ -69,12 +69,12 @@ if __name__ == '__main__':
 
     if location:
         # if location exists
-        payload = {'bot_id': bot_id, 'text': message}
         if args.dry_run:
             print(message)
         else:
+            payload = {'bot_id': bot_id, 'text': message}
             post(payload)
+            gmail.mark_as_sent(meeting_type)
     else:
         print('No meeting today')
         print(gmail.last_location(meeting_type, formatted=True))
- 
