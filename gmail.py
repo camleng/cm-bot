@@ -16,6 +16,14 @@ from bs4 import BeautifulSoup
 from tinydb import TinyDB, Query
 
 
+class CMBot:
+    def __init__(self):
+        current_dir = os.path.dirname(__file__)
+        self.credential_dir = os.path.join(current_dir, '.credentials')
+        self.status_file = os.path.join(current_dir, '.status')
+        self.db = TinyDB('db.json')
+        self.q = Query()
+
 def _get_last_message_id(service, query=''):
     """Uses the Gmail API to list messages matching the given query
     """
