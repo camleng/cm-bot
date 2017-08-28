@@ -16,9 +16,12 @@ from bs4 import BeautifulSoup
 from tinydb import TinyDB, Query
 
 
-def _get_last_message_id(service, user_id, query=''):
+def _get_last_message_id(service, query=''):
     """Uses the Gmail API to list messages matching the given query
     """
+    user_id = 'me'
+    query = 'subject:spiritual cyber-vitamin'
+
     response = service.users().messages().list(userId=user_id, q=query).execute()
     messages = []
     if 'messages' in response:
@@ -52,18 +55,35 @@ def _find_date(headers):
     return None
 
 
-def _get_message_info(service, user_id, msg_id):
+def decode_text(encoded_message):
+    message = str(base64.urlsafe_b64decode(encoded_message['raw']), 'utf-8')
+    return message.replace('=\r\n', '').replace('=22', '"').replace('=46', 'F').lower()
+
+
+def get_text(encoded_message: str):
+    text = decode_text(encoded_message)
+    return BeautifulSoup(text, 'html.parser').text
+
+
+def get_message(service, msg_id):
+    user_id = 'me'
+    encoded_message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
+    return get_text(encoded_message)
+
+
+def get_headers(service, msg_id):
+    user_id = 'me'
+    response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
+    return response['payload']['headers']
+
+
+def _get_message_info(service, msg_id):
     """Uses the Gmail API to extract the encoded text from the message
     and decodes it to make it readable and searchable
     """
     try:
-        enc_message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
-        message = str(base64.urlsafe_b64decode(enc_message['raw']), 'utf-8')
-        message = message.replace('=\r\n', '').replace('=22', '"').replace('=46', 'F').lower()
-        message = BeautifulSoup(message, 'html.parser').text
-        response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
-        headers = response['payload']['headers']
-
+        message = get_message(service, msg_id)
+        headers = get_headers(service, msg_id)
         return message, headers
     except errors.HttpError as error:
         print(f'An error occurred: {error}')
@@ -74,16 +94,19 @@ def _get_credentials():
     """
     scopes = 'https://www.googleapis.com/auth/gmail.readonly'
     client_secret_file = 'client_secret.json'
+    credential_file = 'groupme-bot.json'
     application_name = 'GroupMe Bot'
 
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir, 'groupme-bot.json')
+
+    credential_path = os.path.join(credential_dir, credential_file)
+    client_secret_path = os.path.join(credential_dir, client_secret_file)
 
     store = Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets(os.path.join(credential_dir, client_secret_file), scopes)
+        flow = client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = application_name
         credentials = tools.run_flow(flow, store)
         print(f'Storing credentials to {credential_path}')
@@ -171,20 +194,21 @@ def mark_as_sent(meeting_type):
     db.update({'status': 'sent'}, q.type == meeting_type)
 
 
-def last_location(meeting_type, formatted=False):
+def build_sentence(location):
+    if not location['building'] and not location['room']:
+        return 'There was no meeting on {date.month}/{date.day}'.format_map(location)
+    return 'The {date.month}/{date.day} meeting was held in {building} {room}'.format_map(location)
+
+
+def last_location(meeting_type, sentence=False):
     """Returns the last meeting location
     """
-    location = db.get(q.type == meeting_type)
-    location['date'] = dt.strptime('{month} {day}, {year}'.format_map(location['date']), '%b %d, %Y')
-
-    if location:
-        if formatted:
-            if not location['building'] and not location['room']:
-                return 'There was no meeting on {date.month} {date.day}'.format_map(location)
-            return 'The {date.month}/{date.day} meeting was held in {building} {room}'.format_map(location)
-        else:
-            return location
-
+    location = db.get(q.type == meeting_type) or {}
+    if 'date' in location:
+        location['date'] = dt.strptime('{month} {day}, {year}'.format_map(location['date']), '%b %d, %Y')
+        return build_sentence(location) if sentence else location
+    
+    return
 
 def _find_conversations_meeting(message, headers):
     """Finds the location of the conversations meeting
@@ -202,7 +226,6 @@ def _find_conversations_meeting(message, headers):
         return location
     else:
         return None
-
 
     return {'building': building, 'room': room}
 
@@ -278,50 +301,58 @@ def _find_student_leader_meeting(message, headers):
         return None
 
 
-def find_location(meeting_type):
-    exit_early = False
+def is_not_day(day: str):
+    return dt.today().strftime('%A') == day
+
+
+def check_message_sent_today(meeting_type):
     if _message_sent_today(meeting_type):
-        print('Message already sent')
-        exit_early = True
+        raise Exception('Message already sent') 
 
-    day = dt.today().strftime('%A')
-    if meeting_type == 'student_leader' and day != 'Monday':
-        print('No Student Leader meeting today')
-        exit_early = True
 
-    # if meeting_type == 'conversations' and day != 'Wednesday':
-        # print('No Conversations meeting today')
-    #     exit_early = True
+def check_no_student_leader_meeting_today(meeting_type):
+    if meeting_type == 'student_leader' and is_not_day('Monday'):
+        raise Exception('No Student Leader meeting today')
+ 
 
-    if exit_early:
-        location = last_location(meeting_type, formatted=True)
+def check_no_conversations_meeting_today(meeting_type):
+    if meeting_type == 'conversations' and is_not_day('Wednesday'):
+        raise Exception('No Conversations meeting today')
+
+
+def check_for_early_exit(meeting_type):
+    try:
+        check_message_sent_today(meeting_type)
+        check_no_student_leader_meeting_today(meeting_type)
+        check_no_conversations_meeting_today(meeting_type)
+    except Exception as e:
+        print(e)
+        location = last_location(meeting_type, sentence=True)
         if location:
             print(location)
-        exit()
+        exit(1)
 
 
+def authorize():
     # authorize with oauth2
     credentials = _get_credentials()
     http = credentials.authorize(httplib2.Http())
-    service = discovery.build('gmail', 'v1', http=http)
+    return discovery.build('gmail', 'v1', http=http)
 
-    # 'me' is shorthand for the current user
-    user_id = 'me'
 
-    # gmail query to find the relevant emails
-    query = 'subject:spiritual cyber-vitamin'
-
-    # get the message id from the last email
-    last_message_id = _get_last_message_id(service, user_id, query)
-
-    # get the formatted message and headers
-    message, headers = _get_message_info(service, user_id, last_message_id)
-
+def find_meeting_location(meeting_type, message, headers):
     if meeting_type == 'student_leader':
         return _find_student_leader_meeting(message, headers)
-
     elif meeting_type == 'conversations':
         return _find_conversations_meeting(message, headers)
+
+
+def find_location(meeting_type):
+    check_for_early_exit(meeting_type)
+    service = authorize()
+    message_id = _get_last_message_id(service)
+    message, headers = _get_message_info(service, message_id)
+    return find_meeting_location(meeting_type, message_id, headers)
 
 
 current_dir = os.path.dirname(__file__)

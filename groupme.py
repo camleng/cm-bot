@@ -31,17 +31,53 @@ def parse_args():
 
     return args
 
-if __name__ == '__main__':
-    # parse the command line arguments
-    args = parse_args()
 
-    # set meeting type
-    meeting_type = 'conversations' if args.conversations else 'student_leader'
+def get_meeting_type(args):
+    return 'conversations' if args.conversations else 'student_leader'
+
+
+def print_last_location():
+    location = gmail.last_location(meeting_type, sentence=True)
+    if location:
+        print(location)
+    sys.exit()
+
+
+def build_message(location):
+    if location['room'] == 'Classic Ballroom':
+        message = "Today's Conversations meeting will be held downstairs in the Walb Classic Ballroom."
+    elif location['room'] == '222-226':
+        message = "Today's Conversations meeting will be held upstairs in rooms 222-226."
+    return message
+
+
+def pizza_night_message(location):
+    return ' Pizza tonight!' if gmail.pizza_night(location['date']) else ''
+
+
+def get_student_leader_meeting_location():
+    location = gmail.find_location('student_leader')
+    message = ''
+    if location:
+        message = "Today's Student Leader meeting will be held in {building} {room}.".format_map(location)
+    return location, message
+
+
+def get_conversations_meeting_location():
+    location = gmail.find_location('conversations')
+    message = ''
+    if location:
+        message = build_message(location)
+        message += pizza_night_message(location)
+    return location, message
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    meeting_type = get_meeting_type(args)
 
     if args.last:
-        # get last location
-        print(gmail.last_location(meeting_type, formatted=True))
-        sys.exit()
+        print_last_location()
 
     if args.clear:
         # clear the status file
@@ -49,23 +85,9 @@ if __name__ == '__main__':
         sys.exit()
 
     if args.conversations:
-        # get Conversations meeting location
-        location = gmail.find_location('conversations')
-        if location:
-            # build message and format the room
-            if location['room'] == 'Classic Ballroom':
-                message = "Today's Conversations meeting will be held downstairs in the Walb Classic Ballroom."
-            elif location['room'] == '222-226':
-                message = "Today's Conversations meeting will be held upstairs in rooms 222-226."
-
-            # check if it's a pizza night
-            if gmail.pizza_night(location['date']):
-                message += " Pizza tonight!"
+        location, message = get_conversations_meeting_location()
     else:
-        # get Student Leader meeting location
-        location = gmail.find_location('student_leader')
-        if location:
-            message = "Today's Student Leader meeting will be held in {building} {room}.".format_map(location)
+        location, message = get_student_leader_meeting_location()
 
     if location:
         # if location exists
@@ -77,4 +99,4 @@ if __name__ == '__main__':
             gmail.mark_as_sent(meeting_type)
     else:
         print('No meeting today')
-        print(gmail.last_location(meeting_type, formatted=True))
+        print_last_location()
