@@ -11,3 +11,4 @@ changes
 *.swp
 chat.log
 *clynn*
+.vscode

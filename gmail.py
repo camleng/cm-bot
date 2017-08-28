@@ -310,7 +310,7 @@ def _find_student_leader_meeting(message, headers):
 
 
 def is_not_day(day: str):
-    return dt.today().strftime('%A') == day
+    return dt.today().strftime('%A') != day
 
 
 def check_message_sent_today(meeting_type):
@@ -359,8 +359,8 @@ def find_location(meeting_type):
     check_for_early_exit(meeting_type)
     service = authorize()
     message_id = _get_last_message_id(service)
-    message, headers = _get_message_info(service, message_id)
-    return find_meeting_location(meeting_type, message_id, headers)
+    message, headers = _get_message_info(service, message)
+    return find_meeting_location(meeting_type, message, headers)
 
 
 current_dir = os.path.dirname(__file__)
