@@ -12,3 +12,4 @@ test*
 *.swp
 chat.log
 *clynn*
+.vscode
