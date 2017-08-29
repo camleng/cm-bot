@@ -15,7 +15,7 @@ class CMBotTest(unittest.TestCase):
             assert hasattr(self.bot, attr)
     
     def attrs(self):
-        return ['credential_dir', 'status_file', 'db']
+        return ['id', 'db', 'gmail']
     
     def test_build_sentence_with_location_returns_sentence(self):
         location = {'building': 'Walb', 'room': '222-226', 'date': dt(2017, 8, 21)}
