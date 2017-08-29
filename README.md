@@ -1,4 +1,4 @@
-# GroupMe-Bot
+# CM-Bot
 Locates the meeting for IPFW Campus Ministry student leader meeting Monday mornings.
 
 <br>
@@ -7,7 +7,7 @@ Locates the meeting for IPFW Campus Ministry student leader meeting Monday morni
 
 #### Python 3.6
 
-This code requires Python 3.6. Get the dev version [here](https://www.python.org/downloads/) (currently on `3.6.0b4`). Make sure to add Python to your PATH.
+This code requires Python 3.6. Get it [here](https://www.python.org/downloads/). Make sure to add Python to your PATH.
 
 <br>
 
@@ -27,16 +27,18 @@ If I only show a Unix prompt, that means the command will work in both Unix and 
 
 #### Get the code
 
+You can download Git [here](https://git-scm.com/downloads) if you do not already have it.
+
 Clone this repository on GitHub.
 
 ```bash
-$ git clone https://github.com/camleng/groupme-bot.git
+$ git clone https://github.com/camleng/cm-bot.git
 ```
 
 Enter the created directory.
 
 ```bash
-$ cd groupme-bot
+$ cd cm-bot
 ```
 
 <br>
@@ -106,22 +108,22 @@ $ pip install -r requirements.txt
 
 - Sign in with your GroupMe account
 
-- Click "Create Bot".
+- Click **Create Bot**.
 
 - Select the group your bot will post to.
 
-- Give the bot a name like "CM Bot" or something similar.
+- Give the bot a name like **CM Bot** or something similar.
 
 - It's not necessary to give a Callback or Avatar URL.
 
-- Click "Submit".
+- Click **Submit**.
 
 - Copy the Bot ID of your newly-created bot.
 
-- Open up `groupme.py` in your favorite text editor. Find the following line and change the `bot_id` to match the id of your newly-created bot.
+- Open up `cmbot.py` in your favorite text editor. Find the following line and change the `bot_id` to match the id of your newly-created bot.
 
 ```python
-# groupme.py
+# cmbot.py
 bot_id = '[your_bot_id]'
 ```
 
@@ -129,28 +131,29 @@ bot_id = '[your_bot_id]'
 
 #### Create a new project from the Google API Console
 
-- Use [this wizard](https://console.developers.google.com/flows/enableapi?apiid=gmail) from the Google API Console to create a new project. Name the project "GroupMe Bot" or something similar.
-- Once the API is enabled, click "Go to credentials".
+- Use [this wizard](https://console.developers.google.com/flows/enableapi?apiid=gmail) from the Google API Console to create a new project. Name the project **CM Bot** or something similar.
 
-- Under "Which API are you using?" select "Gmail API".
+- Once the API is enabled, click **Go to credentials**.
 
-- Under "Where will you be calling the API from?" select "Other UI".
+- Under **Which API are you using?** select **Gmail API**.
 
-  *Raspberry Pi reminder: If you are planning to use a Raspberry Pi or another headless device, still select "Other UI". Since the authentication requires a browser, it's impossible to authenticate with a headless device.*
+- Under **Where will you be calling the API from?** select **Other UI**.
 
-- Under "What data will you be accessing?" select "User data".
+  *Raspberry Pi reminder: If you are planning to use a Raspberry Pi or another headless device, still select **Other UI**. Since the authentication requires a browser, it's impossible to authenticate with a headless device.*
 
-- Click "What credentials do I need?"
+- Under **What data will you be accessing?** select **User data**.
 
-- Enter your device name like "MacBook Pro" or "Raspberry Pi" for the OAuth2.0 ID name to differentiate your credentials from different devices.
+- Click **What credentials do I need?**
 
-- Click "Create client ID".
+- Enter your device name, like **MacBook Pro** or **Raspberry Pi**, for the OAuth2.0 ID name to differentiate your credentials from different devices.
 
-- Enter "GroupMe-Bot" as the product name to show to users.
+- Click **Create client ID**.
 
-- Click "Continue".
+- Enter **CM Bot** as the product name to show to users.
 
-- Click "Download" to download the credentials.
+- Click **Continue**.
+
+- Click **Download** to download the credentials.
 
 - Create a folder called `.credentials`.
 
@@ -161,7 +164,9 @@ bot_id = '[your_bot_id]'
   $ mkdir .credentials
   ```
 
-- Rename the downloaded file to `client_secret.json`  and move it to the `.credentials` folder. 
+- Rename the downloaded file to `client_secret.json`  and move it to the `.credentials` folder.
+
+  You may find it quicker on Windows to do this step in File Explorer.
 
   *Note: the downloaded file is often named `Unknown` on macOS.*
 
@@ -185,20 +190,20 @@ bot_id = '[your_bot_id]'
 
 <br>
 
-#### Run `groupme.py`
+#### Run `main.py`
 
 ```bash
 (env)
-$ python groupme.py
+$ python main.py
 ```
 
 This will open your browser to authenticate your application.
 
 *Raspberry Pi reminder: if you are using a Raspberry Pi or any other headless device, make sure you're running this on a computer that uses a UI, or use X with your Pi.*
 
-Click "Allow".
+Click **Allow**.
 
-This creates a file inside your `.credentials` folder called `groupme-bot.json`.
+This creates a file inside your `.credentials` folder called `cm-bot.json`.
 
 The application will now finish running, and you will not need to authenticate on any subsequent runs of the application.
 
@@ -206,7 +211,7 @@ The application will now finish running, and you will not need to authenticate o
 
 #### Automation
 
-It's assumed that this script will run every Monday morning for the Student Leader meeting.
+It's assumed that this script will run every Monday and Wednesday morning for the Student Leader and Conversations meeting respectively.
 
 **Unix**
 
@@ -219,24 +224,27 @@ Edit your `crontab` for your user.
 $ crontab -e
 ```
 
-Add these lines at the end. Substitute $GROUPME with the path to your `groupme-bot` folder. Sadly, `crontab` does not allow for custom variables. You can, however, use $HOME to save some typing.
+Add these lines at the end. Substitute **$CMBOT** with the path to your `cm-bot` folder, and substitute **$PYTHON** with the path to your Python installation. Sadly, `crontab` does not allow for custom variables. You can, however, use $HOME to save some typing.
 
 ```bash
 # m     h       dom     mon     dow     command
-30      8       *       *       1       $GROUPME/env/bin/python $GROUPME/groupme.py
-0       0       *       *       *       echo > $GROUPME/.status
+30      8       *       *       1       $PYTHON $CMBOT/main.py --student-leader
+30      8       *       *       3       $PYTHON $CMBOT/main.py --conversations
+0       0       *       *       *       $PYTHON $CMBOT/main.py --clear-sent
 ```
 
 These values assume the script will run at 8:30 am every Monday morning. If you want to change that, alter the values given. The columns are detailed below.
 
-- Minute (0-59)
-- Hours (0-23)
-- Day (0-31)
-- Month (0-12 [12 == December])
-- Day of the week (0-7 [7 or 0 == Sunday])
-- `/path/to/command` – Script or command name to schedule
+| Type        | Value                            |
+| ----------- | -------------------------------- |
+| Minute      | 0..59                            |
+| Hour        | 0..23                            |
+| Day         | 0..31                            |
+| Month       | 1..12                            |
+| Day of Week | 0 Sunday .. 6 Saturday           |
+| Command     | Script or command to be executed |
 
-The second entry is to clear the `.status` file. That file denotes if the message has already been sent that day. That file will be cleared every night at midnight.
+CM Bot sends a GroupMe message whenever there is a meeting. This message is only sent once on the day of the meeting. The third `crontab` entry is to make sure that on the next day, the bot knows that it's ok to send a message today, since it will run every night at midnight.
 
 <br>
 
@@ -249,7 +257,7 @@ If you wish to run your application on the Pi, you'll have to repeat some of ste
 While on your Pi, clone the project again from GitHub.
 
 ```bash
-$ git clone https://github.com/camleng/groupme-bot.git
+$ git clone https://github.com/camleng/cm-bot.git
 ```
 
 <br>
@@ -262,13 +270,13 @@ Follow steps listed in previous section
 
 **Transferring over the credentials**
 
-Copy the `.credentials` directory over to the Pi underneath the `groupme-bot` folder.
+Copy the `.credentials` directory over to the Pi underneath the `cm-bot` folder.
 
 If you're using Unix, you can use the `scp` command.
 
 ```bash
 (env)
-$ scp -r .credentials pi@10.0.0.25:/path/to/groupme-bot
+$ scp -r .credentials pi@10.0.0.25:/path/to/cm-bot
 ```
 
 If you're using Windows, you can use a program like [WinSCP](https://winscp.net/eng/download.php).
@@ -277,10 +285,10 @@ If you're using Windows, you can use a program like [WinSCP](https://winscp.net/
 
 **Adding your own Bot ID**
 
-Make sure to also change the `bot_id` inside of `groupme.py` with the id of your own bot.
+Make sure to also change the `bot_id` inside of `cmbot.py` with the id of your own bot.
 
 ```python
-# groupme.py
+# main.py
 bot_id = '[your_bot_id]'
 ```
 
@@ -288,11 +296,11 @@ bot_id = '[your_bot_id]'
 
 **Finishing up**
 
-Run `groupme.py` and you'll be all set! The credentials will be detected and it will not ask for authorization this time around.
+Run `main.py` and you'll be all set! The credentials will be detected and it will not ask for authorization this time around.
 
 ```bash
 (env)
-$ python groupme.py
+$ python main.py
 ```
 
 <br>

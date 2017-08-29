@@ -1,25 +1,24 @@
 """Helper functions for parsing the email from ministry@ipfw.edu
 that contains the meeting location
 """
-
 from datetime import datetime as dt, timedelta
+import urllib3
 import base64
 import os
 import re
-import sys
-import urllib3
-from gmail import Gmail
 
 import certifi
 
+from exceptions import RoomNotFoundException
 from database import Database
+from gmail import Gmail
 
 
 class CMBot:
     def __init__(self):
-        self.id = '4c2c8f3d6a387d16f818c8fe88'  # Test Bot for Bot Test
+        self.id = '[your_bot_id]'  
         self.db = Database()
-        self.gmail = Gmail()    
+        self.gmail = Gmail()
 
     def post(self, message: str):
         """POST the payload to send the message
@@ -151,6 +150,8 @@ class CMBot:
             building = self.correct_building_name(building)
 
             return building, room.capitalize()
+        
+        raise RoomNotFoundException('No meeting location found in email')
 
     def correct_building_name(self, building: str):
         return 'LA' if building in ['liberal arts', 'l.a.'] else building.capitalize()

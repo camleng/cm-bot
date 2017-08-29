@@ -1,10 +1,9 @@
-import sys
-import argparse
 from datetime import datetime as dt, timedelta
+import argparse
+import sys
 
 from database import Database
 from cmbot import CMBot
-import ipdb
 
 def parse_args():
     """Parse the command line arguments
