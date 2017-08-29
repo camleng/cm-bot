@@ -20,12 +20,10 @@ class Gmail:
         response = service.users().messages().list(userId=user_id, q=query).execute()
         return response.get('messages', [])
 
-
     def get_last_message_id(self, service, query=''):
         messages = self.build_messages(service)
         return messages[0]['id']
     
-
     def get_credentials(self):
         """Gets stored oauth2 credentials
         """
@@ -49,13 +47,11 @@ class Gmail:
             print(f'Storing credentials to {credential_path}')
         return credentials
 
-
     def authorize(self):
         # authorize with oauth2
         credentials = self.get_credentials()
         http = credentials.authorize(httplib2.Http())
         return discovery.build('gmail', 'v1', http=http)
-
 
     def get_message_info(self, service, msg_id):
         """Uses the Gmail API to extract the encoded text from the message
@@ -72,17 +68,14 @@ class Gmail:
         message = str(base64.urlsafe_b64decode(encoded_message['raw']), 'utf-8')
         return message.replace('=\r\n', '').replace('=22', '"').replace('=46', 'F').lower()
 
-
     def get_text(self, encoded_message: str):
         text = self.decode_text(encoded_message)
         return BeautifulSoup(text, 'html.parser').text
-
 
     def get_message(self, service, msg_id):
         user_id = 'me'
         encoded_message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
         return self.get_text(encoded_message)
-
 
     def get_headers(self, service, msg_id):
         user_id = 'me'
