@@ -12,10 +12,10 @@ class Database:
         self.db.update(location, self.q.type == meeting_type)
 
     def message_sent_today(self, meeting_type):
-        return self.db.contains((self.q.type == meeting_type) & (self.q.status == 'sent'))
+        return self.db.contains((self.q.type == meeting_type) & (self.q.sent == True))
 
     def mark_as_sent(self, meeting_type):
-        self.db.update({'status': 'sent'}, self.q.type == meeting_type)
+        self.db.update({'sent': True}, self.q.type == meeting_type)
     
-    def clear_status(self):
-        self.db.update({'status': ''}, (self.q.type == 'student_leader') | (self.q.type == 'conversations'))
+    def clear_sent(self):
+        self.db.update({'sent': False}, (self.q.type == 'student_leader') | (self.q.type == 'conversations'))
