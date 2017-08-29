@@ -1,22 +1,10 @@
-#!/usr/bin/env python
-
 import sys
 import argparse
+from datetime import datetime as dt, timedelta
 
-import urllib3
-import certifi
-import gmail
-
-
-bot_id = '4c2c8f3d6a387d16f818c8fe88'  # CM Bot for Student Leaders
-
-def post(payload):
-    """POST the payload to send the message
-    Uses SSL certification verification through certifi
-    """
-    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
-    http.request('POST', 'https://api.groupme.com/v3/bots/post', fields=payload)
-
+from database import Database
+from cmbot import CMBot
+import ipdb
 
 def parse_args():
     """Parse the command line arguments
@@ -37,10 +25,9 @@ def get_meeting_type(args):
 
 
 def print_last_location():
-    location = gmail.last_location(meeting_type, sentence=True)
+    location = bot.last_location(meeting_type, sentence=True)
     if location:
         print(location)
-    sys.exit()
 
 
 def build_message(location):
@@ -52,11 +39,11 @@ def build_message(location):
 
 
 def pizza_night_message(location):
-    return ' Pizza tonight!' if gmail.pizza_night(location['date']) else ''
+    return ' Pizza tonight!' if bot.pizza_night(location['date']) else ''
 
 
 def get_student_leader_meeting_location():
-    location = gmail.find_location('student_leader')
+    location = bot.find_location('student_leader')
     message = ''
     if location:
         message = "Today's Student Leader meeting will be held in {building} {room}.".format_map(location)
@@ -64,7 +51,7 @@ def get_student_leader_meeting_location():
 
 
 def get_conversations_meeting_location():
-    location = gmail.find_location('conversations')
+    location = bot.find_location('conversations')
     message = ''
     if location:
         message = build_message(location)
@@ -72,31 +59,34 @@ def get_conversations_meeting_location():
     return location, message
 
 
-if __name__ == '__main__':
-    args = parse_args()
-    meeting_type = get_meeting_type(args)
+# if __name__ == '__main__':
+bot = CMBot()
+db = Database()
 
-    if args.last:
-        print_last_location()
+args = parse_args()
+meeting_type = get_meeting_type(args)    
 
-    if args.clear:
-        # clear the status file
-        gmail.clear_status()
-        sys.exit()
+if args.last:
+    print_last_location()
+    sys.exit()
 
-    if args.conversations:
-        location, message = get_conversations_meeting_location()
+if args.clear:
+    # clear the status file
+    db.clear_status()
+    sys.exit()
+
+if args.conversations:
+    location, message = get_conversations_meeting_location()
+else:
+    location, message = get_student_leader_meeting_location()
+
+if location:
+    # if location exists
+    if args.dry_run:
+        print(message)
     else:
-        location, message = get_student_leader_meeting_location()
-
-    if location:
-        # if location exists
-        if args.dry_run:
-            print(message)
-        else:
-            payload = {'bot_id': bot_id, 'text': message}
-            post(payload)
-            gmail.mark_as_sent(meeting_type)
-    else:
-        print('No meeting today')
-        print_last_location()
+        bot.post(message)
+        db.mark_as_sent(meeting_type)
+else:
+    print('No meeting today')
+    print_last_location()
