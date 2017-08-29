@@ -7,7 +7,7 @@ Locates the meeting for IPFW Campus Ministry student leader meeting Monday morni
 
 #### Python 3.6
 
-This code requires Python 3.6. Get the dev version [here](https://www.python.org/downloads/windows/) (currently on `3.6.0b4`). Make sure to add Python to your PATH.
+This code requires Python 3.6. Get the dev version [here](https://www.python.org/downloads/) (currently on `3.6.0b4`). Make sure to add Python to your PATH.
 
 <br>
 

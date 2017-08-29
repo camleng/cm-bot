@@ -8,7 +8,6 @@ env
 db.json
 changes
 .cache
-test*
 *.swp
 chat.log
 *clynn*
