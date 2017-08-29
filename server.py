@@ -1,9 +1,10 @@
-import json
 from datetime import datetime as dt
+import json
+
+from flask import Flask, request
 
 import groupme
 import gmail
-from flask import Flask, request
 
 app = Flask(__name__)
 

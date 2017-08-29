@@ -1,9 +1,11 @@
-import httplib2
+import base64
+import os
+
 from apiclient import discovery, errors
 from oauth2client import client, tools
 from oauth2client.file import Storage
-import os
-import base64
+import httplib2
+
 from bs4 import BeautifulSoup
 
 
@@ -24,27 +26,28 @@ class Gmail:
         messages = self.build_messages(service)
         return messages[0]['id']
     
+    def get_valid_credentials(self, credential_path: str):
+        client_secret_path = os.path.join(self.credential_dir, 'client_secret.json')        
+        flow = client.flow_from_clientsecrets(client_secret_path, scopes)
+        flow.user_agent = 'CM Bot'
+        credentials = tools.run_flow(flow, store)
+        print(f'Storing credentials to {credential_path}')
+        return credentials
+
+    def make_credential_dir(self):
+        if not os.path.exists(self.credential_dir):
+            os.makedirs(self.credential_dir)
+
     def get_credentials(self):
         """Gets stored oauth2 credentials
         """
         scopes = 'https://www.googleapis.com/auth/gmail.readonly'
-        client_secret_file = 'client_secret.json'
-        credential_file = 'groupme-bot.json'
-        application_name = 'GroupMe Bot'
+        self.make_credential_dir()
+        credential_path = os.path.join(self.credential_dir, 'cm-bot.json')
 
-        if not os.path.exists(self.credential_dir):
-            os.makedirs(self.credential_dir)
-
-        credential_path = os.path.join(self.credential_dir, credential_file)
-        client_secret_path = os.path.join(self.credential_dir, client_secret_file)
-
-        store = Storage(credential_path)
-        credentials = store.get()
+        credentials = Storage(credential_path).get()
         if not credentials or credentials.invalid:
-            flow = client.flow_from_clientsecrets(client_secret_path, scopes)
-            flow.user_agent = application_name
-            credentials = tools.run_flow(flow, store)
-            print(f'Storing credentials to {credential_path}')
+            credentials = self.get_valid_credentials(credential_path)
         return credentials
 
     def authorize(self):
