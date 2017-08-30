@@ -1,6 +1,3 @@
-"""Helper functions for parsing the email from ministry@ipfw.edu
-that contains the meeting location
-"""
 from datetime import datetime as dt, timedelta
 import urllib3
 import base64
@@ -15,8 +12,8 @@ from gmail import Gmail
 
 class CMBot:
     def __init__(self):
-        self.id = '42ac731e558587d77ef7a60239'  
         self.db = Database()
+        self.id = self.db.get_bot_id()
         self.gmail = Gmail()
 
     def post(self, message: str):
