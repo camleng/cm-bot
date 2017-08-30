@@ -15,7 +15,7 @@ from gmail import Gmail
 
 class CMBot:
     def __init__(self):
-        self.id = '[your_bot_id]'  
+        self.id = '42ac731e558587d77ef7a60239'  
         self.db = Database()
         self.gmail = Gmail()
 
@@ -80,9 +80,9 @@ class CMBot:
         elif meeting_type == 'conversations':
             return self.find_conversations_meeting(message, headers)
 
-    def correct_date(self, email_date):
+    def correct_date(self, email_date, weekday):
         # if the email is sent before Monday
-        while email_date.weekday() != 0:
+        while email_date.weekday() != weekday:
             email_date += timedelta(days=1)
         return email_date
 
@@ -91,7 +91,7 @@ class CMBot:
 
     def find_student_leader_meeting(self, message, headers):
         building, room = self.extract_student_leader_room(message)
-        email_date = self.find_date(headers)
+        email_date = self.find_date(headers, weekday=0)
 
         if dt.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
@@ -159,7 +159,7 @@ class CMBot:
             day = '0' + day
         return day
 
-    def find_date(self, headers):
+    def find_date(self, headers, weekday):
         """Uses the Gmail API to extract the header from the message
         and parse it for the date the email was sent.
         """
@@ -169,7 +169,7 @@ class CMBot:
                 day, month, year = header['value'].split()[1:4]
                 day = self.zero_pad(day)
                 date = dt.strptime(f'{month} {day}, {year}', '%b %d, %Y')
-                return self.correct_date(date)
+                return self.correct_date(date, weekday)
 
     def pizza_night(self, date):
         weekday, day = [int(x) for x in dt.today().strftime('%w %d').split()]
@@ -177,10 +177,10 @@ class CMBot:
 
     def find_conversations_meeting(self, message, headers):
         building, room = self.extract_conversations_room(message)
-        email_date = self.find_date(headers)
+        email_date = self.find_date(headers, weekday=2)
 
         if dt.today().date() == email_date.date():
-            location = {'building': building, 'room': room, 'date': date, 'sent': False}
+            location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
             self.db.update_location(location, 'conversations')
             return location
 
