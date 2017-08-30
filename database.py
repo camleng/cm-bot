@@ -25,3 +25,18 @@ class Database:
     
     def clear_sent(self):
         self.db.update({'sent': False}, (self.q.type == 'student_leader') | (self.q.type == 'conversations'))
+
+    def get_bot_id(self, id_type='prod'):
+        if not self.exists(id_type):
+            bot_id = self.prompt_bot_id()
+            self.db.insert({id_type: bot_id})
+        return self.db.get(self.q[id_type].exists())[id_type]
+    
+    def prompt_bot_id(self):
+        bot_id = ''
+        while not bot_id:
+            bot_id = input('Bot id: ')
+        return bot_id
+    
+    def exists(self, key):
+        return self.db.contains(self.q[key].exists())
