@@ -25,7 +25,6 @@ class CMBot:
         http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
         http.request('POST', 'https://api.groupme.com/v3/bots/post', fields=payload)
 
-
     def last_location(self, meeting_type, sentence=False):
         location = self.db.last_location(meeting_type)
         if 'date' in location:
@@ -38,14 +37,13 @@ class CMBot:
         return 'There was no meeting on {date.month}/{date.day}'.format_map(location)
 
     def update_location(self, location, meeting_type):
-        # separate the datetime object in location to be a year, month, and day
-        location['date'] = dict(zip(['month', 'day', 'year'], location['date'].strftime('%b %d %Y').split()))
+        location['date'] = self.date_to_dict(location['date'])
         self.db.update_location(location, meeting_type)
     
     def check_for_early_exit(self, meeting_type):
         try:
             self.check_message_sent_today(meeting_type)
-            # self.check_no_student_leader_meeting_today(meeting_type)
+            self.check_no_student_leader_meeting_today(meeting_type)
             self.check_no_conversations_meeting_today(meeting_type)
         except Exception as e:
             print(e)
@@ -82,23 +80,25 @@ class CMBot:
         elif meeting_type == 'conversations':
             return self.find_conversations_meeting(message, headers)
 
-    def correct_date(email_date):
+    def correct_date(self, email_date):
         # if the email is sent before Monday
         while email_date.weekday() != 0:
             email_date += timedelta(days=1)
         return email_date
 
+    def date_to_dict(self, date):
+        return dict(zip(['month', 'day', 'year'], date.strftime('%b %d %Y').split()))
+
     def find_student_leader_meeting(self, message, headers):
         building, room = self.extract_student_leader_room(message)
         email_date = self.find_date(headers)
 
-        # only post a message in the GroupMe conversation if there is a meeting today
         if dt.today().date() == email_date.date():
-            location = {'building': building, 'room': room, 'date': email_date, 'sent': False}
+            location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
             self.db.update_location(location, 'student_leader')
             return location
        
-        raise Exception('There is no meeting today')
+        raise Exception('No Student Leader meeting today')
 
     def extract_student_leader_room(self, message):
         """Finds the building and room number of the meeting
@@ -179,13 +179,12 @@ class CMBot:
         building, room = self.extract_conversations_room(message)
         email_date = self.find_date(headers)
 
-        # only post a message in the GroupMe conversation if there is a meeting today
         if dt.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': date, 'sent': False}
             self.db.update_location(location, 'conversations')
             return location
 
-        raise Exception('No meeting location found in email')
+        raise Exception('No Conversations meeting today')
 
 
     def extract_conversations_room(self, message):

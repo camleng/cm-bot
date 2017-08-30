@@ -26,7 +26,7 @@ class Gmail:
         messages = self.build_messages(service)
         return messages[0]['id']
     
-    def get_valid_credentials(self, credential_path: str):
+    def get_new_credentials(self, credential_path: str):
         client_secret_path = os.path.join(self.credential_dir, 'client_secret.json')        
         flow = client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = 'CM Bot'
@@ -47,7 +47,7 @@ class Gmail:
 
         credentials = Storage(credential_path).get()
         if not credentials or credentials.invalid:
-            credentials = self.get_valid_credentials(credential_path)
+            credentials = self.get_new_credentials(credential_path)
         return credentials
 
     def authorize(self):

@@ -1,0 +1,26 @@
+{
+    "_default": {
+        "1": {
+            "type": "student_leader",
+            "date": {
+                "month": "Aug",
+                "day": "28",
+                "year": "2017"
+            },
+            "building": "Walb",
+            "room": "222-226",
+            "sent": false
+        },
+        "2": {
+            "type": "conversations",
+            "date": {
+                "month": "Aug",
+                "day": "30",
+                "year": "2017"
+            },
+            "building": "Walb",
+            "room": "Classic Ballroom",
+            "sent": false
+        }
+    }
+}

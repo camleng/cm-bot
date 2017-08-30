@@ -8,8 +8,14 @@ class Database:
     def last_location(self, meeting_type):
         return self.db.get(self.q.type == meeting_type) or {}
     
+    def meeting_type_exists(self, meeting_type):
+        return self.db.search(self.q.type == meeting_type)
+
     def update_location(self, location, meeting_type):
-        self.db.update(location, self.q.type == meeting_type)
+        if self.meeting_type_exists(meeting_type):
+            self.db.update(location, self.q.type == meeting_type)
+        else:
+            self.db.insert({'type': meeting_type, **location})
 
     def message_sent_today(self, meeting_type):
         return self.db.contains((self.q.type == meeting_type) & (self.q.sent == True))
