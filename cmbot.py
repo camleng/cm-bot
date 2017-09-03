@@ -3,8 +3,12 @@ import urllib3
 import base64
 import os
 import re
+import json
+import sys
+import pickle
 
 import certifi
+import requests
 
 from database import Database
 from gmail import Gmail
@@ -14,13 +18,21 @@ class CMBot:
     def __init__(self):
         self.db = Database()
         self.id = self.db.get_bot_id()
+        self.slack_url = self.db.slack_url
         self.gmail = Gmail()
 
     def post(self, message: str):
         # Uses SSL certification verification through certifi
-        payload = {'bot_id': self.id, 'text': message}
         http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
-        http.request('POST', 'https://api.groupme.com/v3/bots/post', fields=payload)
+        requests.post('https://api.groupme.com/v3/bots/post', data=self.get_payload('GroupMe', message))
+        requests.post(self.slack_url, data=self.get_payload('Slack', message))
+
+    def get_payload(self, service, message):
+        if service == 'GroupMe':
+            payload = {'bot_id': self.id, 'text': message}
+        elif service == 'Slack':
+            payload = {'payload': json.dumps({'text': message})}
+        return payload
 
     def last_location(self, meeting_type, sentence=False):
         location = self.db.last_location(meeting_type)
@@ -62,13 +74,13 @@ class CMBot:
 
     def check_no_conversations_meeting_today(self, meeting_type):
         if meeting_type == 'conversations' and self.is_not_day('Wednesday'):
-            raise Exception('No Conversations meeting today')
+            raise Exception('No Conversations meeting scheduled today')
 
     def find_location(self, meeting_type):
         self.check_for_early_exit(meeting_type)
         service = self.gmail.authorize()
-        message_id = self.gmail.get_last_message_id(service)
-        message, headers = self.gmail.get_message_info(service, message_id)
+        email_id = self.gmail.get_last_email_id(service)
+        message, headers = self.gmail.get_email_info(service, email_id)
         return self.find_meeting_location(meeting_type, message, headers)
 
     def find_meeting_location(self, meeting_type, message, headers):
@@ -95,7 +107,7 @@ class CMBot:
             self.db.update_location(location, 'student_leader')
             return location
        
-        raise Exception('No Student Leader meeting today')
+        raise Exception('No Student Leader meeting scheduled today')
 
     def extract_student_leader_room(self, message):
         """Finds the building and room number of the meeting
@@ -143,7 +155,6 @@ class CMBot:
         if match and len(match.groups()) == 2:
             building, room = match.groups()
             building = self.correct_building_name(building)
-
             return building, room.capitalize()
         
         raise Exception('No meeting location found in email')
@@ -181,8 +192,7 @@ class CMBot:
             self.db.update_location(location, 'conversations')
             return location
 
-        raise Exception('No Conversations meeting today')
-
+        raise Exception('No Conversations meeting scheduled today')
 
     def extract_conversations_room(self, message):
         """Finds the building and room number of the meeting
@@ -208,15 +218,17 @@ class CMBot:
         ,?
         \s*
         7(?::00)?         # starting time (7 or 7:30)
+        \s*
         -
+        \s*
         8:30              # ending time
         \s*
-        p.?m.?,?          # 'pm' or 'p.m.'
+        p\.?m\.?,?          # 'pm' or 'p.m.'
         \s*
         (?:ipfw's\s*)?    # "IPFW's" Walb Class Ballroom
         (walb)            # building (always Walb)
         ,?
-        .*
+        .*?
         (222|ballroom)""", re.X)
         match = pattern.search(message)
 

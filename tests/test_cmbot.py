@@ -1,9 +1,11 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, ANY
 from cmbot import CMBot
 import cmbot
 import pytest
 from datetime import datetime as dt, timedelta
+import json
+import pickle
 
 
 class CMBotTest(unittest.TestCase):
@@ -41,5 +43,17 @@ class CMBotTest(unittest.TestCase):
         self.bot.is_not_day = MagicMock(return_value=True)
         with pytest.raises(Exception):
             self.bot.check_no_conversations_meeting_today('conversations')
-    
-    
+
+    @property
+    def student_leader_message(self):
+        return 'The Student Leader meeting will be held in Walb 226.'
+
+    @property
+    def email_info(self):
+        message, headers = '', ''
+        with open('emails/message') as f:
+            message = f.read()
+        with open('emails/headers', 'rb') as f:
+            headers = pickle.load(f)
+
+        return message, headers

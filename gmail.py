@@ -22,7 +22,7 @@ class Gmail:
         response = service.users().messages().list(userId=user_id, q=query).execute()
         return response.get('messages', [])
 
-    def get_last_message_id(self, service, query=''):
+    def get_last_email_id(self, service, query=''):
         messages = self.build_messages(service)
         return messages[0]['id']
     
@@ -56,7 +56,7 @@ class Gmail:
         http = credentials.authorize(httplib2.Http())
         return discovery.build('gmail', 'v1', http=http)
 
-    def get_message_info(self, service, msg_id):
+    def get_email_info(self, service, msg_id):
         """Uses the Gmail API to extract the encoded text from the message
         and decodes it to make it readable and searchable
         """
