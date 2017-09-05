@@ -9,8 +9,7 @@ from cmbot import CMBot
 class Main:
     def __init__(self, args: dict):
         self.args = args
-        self.bot = CMBot()
-        self.db = Database()
+        self.bot = CMBot(self.specified_setup())
         self.meeting_type = self.get_meeting_type(args)
 
     def get_meeting_type(self, args):
@@ -56,14 +55,22 @@ class Main:
 
     def specified_dry_run(self):
         return self.args['dry_run']
+    
+    def specified_setup(self):
+        return self.args['setup']
 
     def main(self):
+        if self.specified_setup():
+            self.bot.gmail.get_new_credentials()
+            print("\nYou're all set up! Run `python main.py -h` for more help.")
+            sys.exit()
+
         if self.specified_last_location():
             print(self.last_location())
             return
 
         if self.specified_clear_sent():
-            self.db.clear_sent()
+            self.bot.db.clear_sent()
             return
 
         try:
@@ -78,7 +85,7 @@ class Main:
                 print(message)
             else:
                 self.bot.post(message)
-                self.db.mark_as_sent(self.meeting_type)
+                self.bot.db.mark_as_sent(self.meeting_type)
         except Exception as e:
             print(e)
             return 1
@@ -88,11 +95,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--student-leader', action='store_true', help='Get the location of the Student Leader meeting. Use with -l to show the last location.')
     parser.add_argument('-c', '--conversations', action='store_true', help='Get the location of the Conversations meeting. Use with -l to show the last location.')
-    parser.add_argument('-l', '--last-location', action='store_true', help='View the location of the last meeting. Used in conjunction with -s or -c')
-    parser.add_argument('-n', '--dry-run', action='store_true', help='Do not send message to GroupMe--just show what would be sent')
-    parser.add_argument('--clear-sent', action='store_true', help='Clears the sent attribute in the database')
+    parser.add_argument('-l', '--last-location', action='store_true', help='View the location of the last meeting. Used in conjunction with -s or -c.')
+    parser.add_argument('-n', '--dry-run', action='store_true', help='Do not send message to GroupMe--just show what would be sent.')
+    parser.add_argument('--setup', action='store_true', help='Guided setup for CM-Bot.')        
+    parser.add_argument('--clear-sent', action='store_true', help='Clears the sent attribute in the database.')
     args = parser.parse_args()
-
     return args
 
 

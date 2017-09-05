@@ -1,26 +1,21 @@
 import unittest
-from unittest.mock import MagicMock, ANY
-from cmbot import CMBot
+from unittest.mock import MagicMock
 import cmbot
-import pytest
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt
 import json
-import pickle
 from main import Main
-import argparse
-import sys
 
 
 class MainTest(unittest.TestCase):
     def setUp(self):
-        args = self.args
+        args = arguments()
         self.main = Main(args)
     
     def test_post_when_student_leader_meeting_is_today(self):
         cmbot.requests.post = MagicMock()     
         self.main.specified_student_leader = MagicMock(return_value=True)         
         self.main.bot.find_location = MagicMock(return_value=self.sl_location)
-        self.main.db.mark_as_sent = MagicMock()
+        self.main.bot.db.mark_as_sent = MagicMock()
 
         self.main.main()
         cmbot.requests.post.assert_any_call('https://api.groupme.com/v3/bots/post', data=self.get_groupme_payload(self.sl_message))
@@ -30,15 +25,15 @@ class MainTest(unittest.TestCase):
         cmbot.requests.post = MagicMock()
         self.main.specified_conversations = MagicMock(return_value=True)
         self.main.bot.find_location = MagicMock(return_value=self.c_location)
-        self.main.db.mark_as_sent = MagicMock()
+        self.main.bot.db.mark_as_sent = MagicMock()
 
         self.main.main()
         cmbot.requests.post.assert_called_with(self.main.bot.slack_url, data=self.get_slack_payload(self.c_message))
-    
-    def test_error_when_not_specifying_meeting_type(self):
-        code = self.main.main()
-        assert code == 1
 
+    def test_error_when_not_specifying_meeting_type(self):
+            code = self.main.main()
+            assert code == 1
+    
     def get_slack_payload(self, message):
         return {'payload': json.dumps({'text': message})}
 
@@ -70,13 +65,13 @@ class MainTest(unittest.TestCase):
             "date": dt(2017, 8, 23),
             "sent": False
         }
-    
-    @property
-    def args(self):
-        return {
-            'student_leader': False,
-            'conversations': False,
-            'last_location': False,
-            'dry_run': False,
-            'clear_sent': False
-        }
+
+def arguments():
+    return {
+        'student_leader': False,
+        'conversations': False,
+        'last_location': False,
+        'dry_run': False,
+        'clear_sent': False,
+        'setup': False
+    }

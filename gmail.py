@@ -1,5 +1,7 @@
 import base64
 import os
+from argparse import Namespace
+from logging import NOTSET
 
 from apiclient import discovery, errors
 from oauth2client import client, tools
@@ -26,11 +28,15 @@ class Gmail:
         messages = self.build_messages(service)
         return messages[0]['id']
     
-    def get_new_credentials(self, credential_path: str):
-        client_secret_path = os.path.join(self.credential_dir, 'client_secret.json')        
+    def get_new_credentials(self):
+        scopes = 'https://www.googleapis.com/auth/gmail.readonly'        
+        self.make_credential_dir()
+        credential_path = os.path.join(self.credential_dir, 'cm-bot.json')        
+        client_secret_path = os.path.join(self.credential_dir, 'client_secret.json')   
         flow = client.flow_from_clientsecrets(client_secret_path, scopes)
         flow.user_agent = 'CM Bot'
-        credentials = tools.run_flow(flow, store)
+        store = Storage(credential_path)
+        credentials = tools.run_flow(flow, store, self.get_flags())
         print(f'Storing credentials to {credential_path}')
         return credentials
 
@@ -41,13 +47,12 @@ class Gmail:
     def get_credentials(self):
         """Gets stored oauth2 credentials
         """
-        scopes = 'https://www.googleapis.com/auth/gmail.readonly'
         self.make_credential_dir()
         credential_path = os.path.join(self.credential_dir, 'cm-bot.json')
 
         credentials = Storage(credential_path).get()
         if not credentials or credentials.invalid:
-            credentials = self.get_new_credentials(credential_path)
+            credentials = self.get_new_credentials()
         return credentials
 
     def authorize(self):
@@ -84,3 +89,12 @@ class Gmail:
         user_id = 'me'
         response = service.users().messages().get(userId=user_id, id=msg_id, format='metadata').execute()
         return response['payload']['headers']
+
+    def get_flags(self):
+        kwargs = {
+            'auth_host_name': 'localhost',
+            'noauth_local_webserver': False,
+            'auth_host_port': [8080, 8090],
+            'logging_level': 'ERROR'
+        }
+        return Namespace(**kwargs)

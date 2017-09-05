@@ -15,17 +15,17 @@ from gmail import Gmail
 
 
 class CMBot:
-    def __init__(self):
-        self.db = Database()
+    def __init__(self, setup=False):
+        self.db = Database(setup)
         self.id = self.db.get_bot_id()
         self.slack_url = self.db.slack_url
         self.gmail = Gmail()
 
     def post(self, message: str):
         # Uses SSL certification verification through certifi
-        http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
         requests.post('https://api.groupme.com/v3/bots/post', data=self.get_payload('GroupMe', message))
-        requests.post(self.slack_url, data=self.get_payload('Slack', message))
+        if self.slack_url:
+            requests.post(self.slack_url, data=self.get_payload('Slack', message))
 
     def get_payload(self, service, message):
         if service == 'GroupMe':
@@ -67,7 +67,7 @@ class CMBot:
 
     def check_no_student_leader_meeting_today(self, meeting_type):
         if meeting_type == 'student_leader' and self.is_not_day('Monday'):
-            raise Exception('No Student Leader meeting today')
+            raise Exception('No Student Leader meeting scheduled today')
     
     def is_not_day(self, day: str):
         return dt.today().strftime('%A') != day

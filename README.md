@@ -118,14 +118,7 @@ $ pip install -r requirements.txt
 
 - Click **Submit**.
 
-- Copy the Bot ID of your newly-created bot.
-
-- Open up `cmbot.py` in your favorite text editor. Find the following line and change the `bot_id` to match the id of your newly-created bot.
-
-```python
-# cmbot.py
-bot_id = '[your_bot_id]'
-```
+- Copy the Bot ID of your newly-created bot and save it for later.
 
 <br>
 
@@ -190,12 +183,16 @@ bot_id = '[your_bot_id]'
 
 <br>
 
-#### Run `main.py`
+#### Run `main.py` with `--setup` flag
 
 ```bash
 (env)
-$ python main.py
+$ python main.py --setup
 ```
+
+You will be prompted for your Bot ID that you saved earlier.
+
+You will also be prompted for a Slack Incoming Webhook URL if you would also like the bot to post there. This is entirely optional.
 
 This will open your browser to authenticate your application.
 
@@ -228,12 +225,12 @@ Add these lines at the end. Substitute **$CMBOT** with the path to your `cm-bot`
 
 ```bash
 # m     h       dom     mon     dow     command
-30      8       *       *       1       $PYTHON $CMBOT/main.py --student-leader
-30      8       *       *       3       $PYTHON $CMBOT/main.py --conversations
+30      9       *       *       1       $PYTHON $CMBOT/main.py --student-leader
+15      18      *       *       3       $PYTHON $CMBOT/main.py --conversations
 0       0       *       *       *       $PYTHON $CMBOT/main.py --clear-sent
 ```
 
-These values assume the script will run at 8:30 am every Monday morning. If you want to change that, alter the values given. The columns are detailed below.
+These values assume the script will run at 9:30 am every Monday morning, and 6:15 PM every Wednesday night. If you want to change that, alter the values given. The columns are detailed below.
 
 | Type        | Value                            |
 | ----------- | -------------------------------- |
@@ -244,7 +241,7 @@ These values assume the script will run at 8:30 am every Monday morning. If you 
 | Day of Week | 0 Sunday .. 6 Saturday           |
 | Command     | Script or command to be executed |
 
-CM Bot sends a GroupMe message whenever there is a meeting. This message is only sent once on the day of the meeting. The third `crontab` entry is to make sure that on the next day, the bot knows that it's ok to send a message today, since it will run every night at midnight.
+CM Bot sends a GroupMe message whenever there is a meeting. This message is only sent once on the day of the meeting. The third `crontab` entry is to make sure that on the next day, the bot knows that it's ok to send a message today, since that command will run every night at midnight.
 
 <br>
 
@@ -283,24 +280,33 @@ If you're using Windows, you can use a program like [WinSCP](https://winscp.net/
 
 <br>
 
-**Adding your own Bot ID**
-
-Make sure to also change the `bot_id` inside of `cmbot.py` with the id of your own bot.
-
-```python
-# main.py
-bot_id = '[your_bot_id]'
-```
-
-<br>
-
-**Finishing up**
-
-Run `main.py` and you'll be all set! The credentials will be detected and it will not ask for authorization this time around.
+**Run `main.py` with `--setup` flag**
 
 ```bash
 (env)
-$ python main.py
+$ python main.py --setup
 ```
+
+You'll be prompted for you GroupMe Bot ID you saved earlier (and also the Slack Incoming Webhook URL I mentioned earlier, if you wish).
+
+**Very first run**
+
+You're all finished!
+
+If it's Monday, run:
+
+```bash
+(env)
+$ python main.py --student-leader
+```
+
+And if it's Wednesday, run:
+
+```bash
+(env)
+$ python main.py --conversations
+```
+
+Either way, the credentials will automatically be detected and it will not ask for authorization this time around.
 
 <br>
