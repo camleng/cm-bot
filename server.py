@@ -2,11 +2,10 @@ from datetime import datetime as dt
 import json
 
 from flask import Flask, request
-
-import groupme
-import gmail
+from cmbot import CMBot
 
 app = Flask(__name__)
+bot = CMBot()
 
 @app.route('/', methods=['POST'])
 def parse():
@@ -58,9 +57,6 @@ def log(data):
     entry = f"[{timestamp}] {data['name']}: {data['text']}\n"
     try:
         with open('chat.log', 'a') as f:
-            f.write(entry)
-    except FileNotFoundError:
-        with open('chat.log', 'w') as f:
             f.write(entry)
  
 

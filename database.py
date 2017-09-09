@@ -58,4 +58,4 @@ class Database:
         elif self.setup and self.exists(key):
             slack_url = self.prompt_user('Slack URL', required=False)            
             self.db.update({key: slack_url}, self.q[key].exists())
-        return self.db.get(self.q[key].exists())[key]
+        return (self.db.get(self.q[key].exists()) or {}).get(key, None)

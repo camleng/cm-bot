@@ -44,16 +44,41 @@ class CMBotTest(unittest.TestCase):
         with pytest.raises(Exception):
             self.bot.check_no_conversations_meeting_today('conversations')
 
+    def test_student_leader_regex_raises_exception_with_no_student_leader_meeting(self):
+        message = self.email_no_student_leader[0]
+        with pytest.raises(Exception):
+            self.bot.extract_student_leader_room(message)
+    
+    def test_conversations_regex_matches_with_no_student_leader_meeting(self):
+        message = self.email_no_student_leader[0]
+        building, room = self.bot.extract_conversations_room(message)
+        assert building == 'Walb'
+        assert room == 'Classic Ballroom'
+
+    def test_conversations_regex_matches_email_sent_tuesday(self):
+        message = self.email_sent_tuesday[0]
+        building, room = self.bot.extract_conversations_room(message)
+        assert building == 'Walb'
+        assert room == 'Classic Ballroom'
+
     @property
     def student_leader_message(self):
         return 'The Student Leader meeting will be held in Walb 226.'
 
     @property
-    def email_info(self):
+    def email_no_student_leader(self):
         message, headers = '', ''
-        with open('emails/message') as f:
+        with open('tests/emails/no-student-leader/message') as f:
             message = f.read()
-        with open('emails/headers', 'rb') as f:
+        with open('tests/emails/no-student-leader/headers', 'rb') as f:
             headers = pickle.load(f)
+        return message, headers
 
+    @property
+    def email_sent_tuesday(self):
+        message, headers = '', ''
+        with open('tests/emails/sent-on-tuesday/message') as f:
+            message = f.read()
+        with open('tests/emails/sent-on-tuesday/headers', 'rb') as f:
+            headers = pickle.load(f)
         return message, headers

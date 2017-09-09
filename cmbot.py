@@ -1,4 +1,4 @@
-from datetime import datetime as dt, timedelta
+from datetime import datetime, timedelta
 import urllib3
 import base64
 import os
@@ -37,7 +37,7 @@ class CMBot:
     def last_location(self, meeting_type, sentence=False):
         location = self.db.last_location(meeting_type)
         if 'date' in location:
-            location['date'] = dt.strptime('{month} {day}, {year}'.format_map(location['date']), '%b %d, %Y')
+            location['date'] = datetime.strptime('{month} {day}, {year}'.format_map(location['date']), '%b %d, %Y')
             return self.build_sentence(location) if sentence else location
 
     def build_sentence(self, location):
@@ -70,7 +70,7 @@ class CMBot:
             raise Exception('No Student Leader meeting scheduled today')
     
     def is_not_day(self, day: str):
-        return dt.today().strftime('%A') != day
+        return datetime.today().strftime('%A') != day
 
     def check_no_conversations_meeting_today(self, meeting_type):
         if meeting_type == 'conversations' and self.is_not_day('Wednesday'):
@@ -90,7 +90,7 @@ class CMBot:
             return self.find_conversations_meeting(message, headers)
 
     def correct_date(self, email_date, weekday):
-        # if the email is sent before Monday
+        # if the email isn't sent on Monday
         while email_date.weekday() != weekday:
             email_date += timedelta(days=1)
         return email_date
@@ -102,7 +102,7 @@ class CMBot:
         building, room = self.extract_student_leader_room(message)
         email_date = self.find_date(headers, weekday=0)
 
-        if dt.today().date() == email_date.date():
+        if datetime.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
             self.db.update_location(location, 'student_leader')
             return location
@@ -151,16 +151,12 @@ class CMBot:
         """, re.X)
         match = re.search(pattern, message)
 
-        # check for success
         if match and len(match.groups()) == 2:
-            building, room = match.groups()
-            building = self.correct_building_name(building)
-            return building, room.capitalize()
-        
+            return self.correct_student_leader_room(*match.groups())
         raise Exception('No meeting location found in email')
 
-    def correct_building_name(self, building: str):
-        return 'LA' if building in ['liberal arts', 'l.a.'] else building.capitalize()
+    def correct_building_name(self, building: str, room: str):
+        return ('LA' if building in ['liberal arts', 'l.a.'] else building.capitalize()), room.capitalize()
 
     def zero_pad(str, day: str):
         if len(day) == 1:
@@ -171,23 +167,25 @@ class CMBot:
         """Uses the Gmail API to extract the header from the message
         and parse it for the date the email was sent.
         """
-        # extract date from email headers
         for header in headers:
             if header['name'] == 'Date':
                 day, month, year = header['value'].split()[1:4]
                 day = self.zero_pad(day)
-                date = dt.strptime(f'{month} {day}, {year}', '%b %d, %Y')
+                date = datetime.strptime(f'{month} {day}, {year}', '%b %d, %Y')
                 return self.correct_date(date, weekday)
 
-    def pizza_night(self, date):
-        weekday, day = [int(x) for x in dt.today().strftime('%w %d').split()]
+    def dict_to_date(self, date: datetime) -> dict:
+        return datetime.strptime('{month} {day}, {year}'.format_map(date), '%b %d, %Y')
+
+    def pizza_night(self, date: dict):
+        weekday, day = [int(t) for t in self.dict_to_date(date).strftime('%w %d').split()]
         return weekday == 3 and day - 7 <= 0
 
-    def find_conversations_meeting(self, message, headers):
+    def find_conversations_meeting(self, message, headers):    
         building, room = self.extract_conversations_room(message)
         email_date = self.find_date(headers, weekday=2)
 
-        if dt.today().date() == email_date.date():
+        if datetime.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
             self.db.update_location(location, 'conversations')
             return location
@@ -232,14 +230,13 @@ class CMBot:
         (222|ballroom)""", re.X)
         match = pattern.search(message)
 
-        # check for success
         if match and len(match.groups()) == 2:
-            building, room = match.groups()
-            # format results
-            if room == 'ballroom':
-                room = 'Classic Ballroom'
-            elif room == '222':
-                room = '222-226'
-            return building.capitalize(), room
-
+            return self.correct_conversations_room(*match.groups())
         raise Exception('No meeting location found in email')
+
+    def correct_conversations_room(self, building, room):
+        if room == 'ballroom':
+            room = 'Classic Ballroom'
+        elif room == '222':
+            room = '222-226'
+        return building.capitalize(), room
