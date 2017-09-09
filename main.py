@@ -4,6 +4,7 @@ import sys
 
 from database import Database
 from cmbot import CMBot
+from models import MeetingType as Type
 
 
 class Main:
@@ -12,14 +13,14 @@ class Main:
         self.bot = CMBot(self.specified_setup())
         self.meeting_type = self.get_meeting_type(args)
 
-    def get_meeting_type(self, args):
-        return 'conversations' if self.args['conversations'] else 'student_leader'
+    def get_meeting_type(self, args: dict) -> Type:
+        return Type.CONVERSATIONS if self.args[Type.CONVERSATIONS.value] else Type.STUDENT_LEADER
 
-    def last_location(self):
+    def last_location(self) -> dict:
         location = self.bot.last_location(self, meeting_type, sentence=True)
         return location if location else 'Sorry, I couldn\'t find a previous location'
 
-    def build_conversations_message(self, location):
+    def build_conversations_message(self, location: str) -> str:
         message = ''
         if location['room'] == 'Classic Ballroom':
             message = "Today's Conversations meeting will be held downstairs in the Walb Classic Ballroom."
@@ -28,38 +29,38 @@ class Main:
         message += self.pizza_night_message(location)
         return message
 
-    def pizza_night_message(self, location: dict):
-        return ' Pizza tonight!' if self.bot.pizza_night(location['date']) else ''
+    def pizza_night_message(self, location: dict) -> str:
+        return ' Pizza tonight!' if self.bot.is_pizza_night(location['date']) else ''
 
-    def get_student_leader_meeting_location_message(self):
-        location = self.bot.find_location('student_leader')
+    def get_student_leader_meeting_location_message(self) -> str:
+        location = self.bot.find_location(Type.STUDENT_LEADER)
         message = "Today's Student Leader meeting will be held in {building} {room}.".format_map(location)
         return message
 
-    def get_conversations_meeting_location_message(self):
-        location = self.bot.find_location('conversations')
+    def get_conversations_meeting_location_message(self) -> str:
+        location = self.bot.find_location(Type.CONVERSATIONS)
         message = self.build_conversations_message(location)
         return message
 
-    def specified_last_location(self):
+    def specified_last_location(self) -> bool:
         return self.args['last_location']
     
-    def specified_clear_sent(self):
+    def specified_clear_sent(self) -> bool:
         return self.args['clear_sent']
 
-    def specified_conversations(self):
-        return self.args['conversations']
+    def specified_conversations(self) -> bool:
+        return self.args[Type.CONVERSATIONS.value]
 
-    def specified_student_leader(self):
-        return self.args['student_leader']
+    def specified_student_leader(self) -> bool:
+        return self.args[Type.STUDENT_LEADER.value]
 
-    def specified_dry_run(self):
+    def specified_dry_run(self) -> bool:
         return self.args['dry_run']
     
-    def specified_setup(self):
+    def specified_setup(self) -> bool:
         return self.args['setup']
 
-    def main(self):
+    def main(self) -> int:
         if self.specified_setup():
             self.bot.gmail.get_new_credentials()
             print("\nYou're all set up! Run `python main.py -h` for more help.")
@@ -91,7 +92,7 @@ class Main:
             return 1
 
 
-def parse_args():
+def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--student-leader', action='store_true', help='Get the location of the Student Leader meeting. Use with -l to show the last location.')
     parser.add_argument('-c', '--conversations', action='store_true', help='Get the location of the Conversations meeting. Use with -l to show the last location.')

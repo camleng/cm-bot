@@ -3,6 +3,7 @@ from unittest import mock
 from database import Database
 import pytest
 from datetime import datetime as dt, timedelta
+from models import MeetingType as Type
 
 
 class DatabaseTest(unittest.TestCase):
@@ -17,5 +18,5 @@ class DatabaseTest(unittest.TestCase):
         return ['db', 'q']
     
     def test_last_location_returns_location(self):
-        location = self.db.last_location('student_leader')
+        location = self.db.last_location(Type.STUDENT_LEADER)
         assert isinstance(location, dict)

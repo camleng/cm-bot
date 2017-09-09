@@ -6,6 +6,7 @@ import pytest
 from datetime import datetime as dt, timedelta
 import json
 import pickle
+from models import MeetingType as Type
 
 
 class CMBotTest(unittest.TestCase):
@@ -32,17 +33,17 @@ class CMBotTest(unittest.TestCase):
     def test_check_message_sent_today_returns_true_raises_exception(self):
         self.bot.db.message_sent_today = MagicMock(return_value=True)
         with pytest.raises(Exception):
-            self.bot.check_message_sent_today('student_leader')
+            self.bot.check_message_sent_today(Type.STUDENT_LEADER)
 
     def test_check_no_student_leader_meeting_today(self):
         self.bot.is_not_day = MagicMock(return_value=True)
         with pytest.raises(Exception):
-            self.bot.check_no_student_leader_meeting_today('student_leader')
+            self.bot.check_no_student_leader_meeting_today(Type.STUDENT_LEADER)
     
     def test_check_no_conversations_meeting_today(self):
         self.bot.is_not_day = MagicMock(return_value=True)
         with pytest.raises(Exception):
-            self.bot.check_no_conversations_meeting_today('conversations')
+            self.bot.check_no_conversations_meeting_today(Type.CONVERSATIONS)
 
     def test_student_leader_regex_raises_exception_with_no_student_leader_meeting(self):
         message = self.email_no_student_leader[0]
