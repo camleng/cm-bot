@@ -34,6 +34,9 @@ class Database:
         elif self.setup and self.exists(id_type):
             bot_id = self.prompt_user('Bot ID')            
             self.db.update({id_type: bot_id}, self.q[id_type].exists())
+        elif not self.exists(id_type):
+            bot_id = self.prompt_user('Bot ID')
+            self.insert_bot_id(id_type, bot_id)
         return self.db.get(self.q[id_type].exists())[id_type]
     
     def insert_bot_id(self, id_type: str, bot_id: str):
