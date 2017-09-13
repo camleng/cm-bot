@@ -14,6 +14,7 @@ from database import Database
 from gmail import Gmail
 from models import MeetingType as Type, Service
 
+
 class CMBot:
     def __init__(self, setup=False):
         self.db = Database(setup)
@@ -23,9 +24,15 @@ class CMBot:
 
     def post(self, message: str) -> None:
         # Uses SSL certification verification through certifi
-        requests.post('https://api.groupme.com/v3/bots/post', data=self.get_payload(Service.GROUPME, message))
+        self.post_to_groupme(message)
         if self.slack_url:
-            requests.post(self.slack_url, data=self.get_payload(Service.SLACK, message))
+            self.post_to_slack(message)
+
+    def post_to_groupme(self, message: str) -> None:
+        requests.post('https://api.groupme.com/v3/bots/post', data=self.get_payload(Service.GROUPME, message))
+
+    def post_to_slack(self, message: str) -> None:
+        requests.post(self.slack_url, data=self.get_payload(Service.SLACK, message))
 
     def get_payload(self, service: Service, message: str) -> dict:
         if service == Service.GROUPME:
@@ -47,6 +54,7 @@ class CMBot:
 
     def update_location(self, location: dict, meeting_type: Type) -> None:
         location['date'] = self.date_to_dict(location['date'])
+        location['meeting_type'] == location['meeting_type'].value
         self.db.update_location(location, meeting_type)
     
     def check_for_early_exit(self, meeting_type) -> None:
@@ -104,7 +112,7 @@ class CMBot:
 
         if datetime.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
-            self.db.update_location(location, Type.STUDENT_LEADER)
+            self.db.update_location(location, Type.STUDENT_LEADER.value)
             return location
        
         raise Exception('No Student Leader meeting scheduled today')
@@ -155,7 +163,7 @@ class CMBot:
             return self.correct_student_leader_room(*match.groups())
         raise Exception('No meeting location found in email')
 
-    def correct_building_name(self, building: str, room: str) -> (str, str):
+    def correct_student_leader_room(self, building: str, room: str) -> (str, str):
         return ('LA' if building in ['liberal arts', 'l.a.'] else building.capitalize()), room.capitalize()
 
     def zero_pad(str, day: str) -> str:
