@@ -18,7 +18,7 @@ class Main:
 
     def last_location(self) -> dict:
         location = self.bot.last_location(self, meeting_type, sentence=True)
-        return location if location else 'Sorry, I couldn\'t find a previous location'
+        return location if location else "Sorry, I couldn't find a previous location"
 
     def build_conversations_message(self, location: str) -> str:
         message = ''

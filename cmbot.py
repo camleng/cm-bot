@@ -187,7 +187,7 @@ class CMBot:
 
         if datetime.today().date() == email_date.date():
             location = {'building': building, 'room': room, 'date': self.date_to_dict(email_date), 'sent': False}
-            self.db.update_location(location, Type.CONVERSATIONS)
+            self.db.update_location(location, Type.CONVERSATIONS.value)
             return location
 
         raise Exception('No Conversations meeting scheduled today')
