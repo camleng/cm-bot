@@ -35,7 +35,7 @@ class Gmail:
         credential_path = os.path.join(self.credential_dir, 'cm-bot.json')        
         client_secret_path = os.path.join(self.credential_dir, 'client_secret.json')   
         flow = client.flow_from_clientsecrets(client_secret_path, scopes)
-        flow.user_agent = 'CM Bot'
+        flow.user_agent = 'CM Botter'
         store = Storage(credential_path)
         credentials = tools.run_flow(flow, store, self.get_flags())
         print(f'Storing credentials to {credential_path}')
