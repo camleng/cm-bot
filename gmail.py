@@ -8,6 +8,7 @@ from oauth2client import client, tools
 from oauth2client.file import Storage
 import httplib2
 
+# That's some beautiful soup right there
 from bs4 import BeautifulSoup
 
 
